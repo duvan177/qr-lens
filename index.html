@@ -12,9 +12,12 @@
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
         min-height: 100dvh;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
-        padding: 24px;
+        padding: 24px 16px;
+        padding-top: max(24px, env(safe-area-inset-top));
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
+        box-sizing: border-box;
       }
     </style>
   </head>

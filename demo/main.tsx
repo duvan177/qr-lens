@@ -16,7 +16,7 @@ function App() {
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ width: '100%', maxWidth: 520, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', color: '#fff' }}>
         qr-lens{' '}
@@ -33,7 +33,7 @@ function App() {
         showCameraSwitch
         showTorch
         style={{ borderRadius: 20 }}
-        width={500}
+        width="100%"
         height={300}
       />
 
