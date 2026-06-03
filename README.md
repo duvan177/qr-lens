@@ -4,7 +4,7 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/qr-lens)](https://bundlephobia.com/package/qr-lens)
 [![license](https://img.shields.io/npm/l/qr-lens)](https://www.npmjs.com/package/qr-lens)
 
-📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)**
+📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)** · 🚀 **[Demo en vivo](https://qr-lens-demo.vercel.app)**
 
 Librería React para escaneo de códigos QR — ligera, accesible y compatible con SSR.
 
