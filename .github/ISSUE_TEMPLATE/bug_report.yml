@@ -1,0 +1,55 @@
+name: 🐛 Bug report / Reporte de bug
+description: Report incorrect behavior in qr-lens / Informa de un comportamiento incorrecto
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Fill in the fields to help us reproduce it.
+        Gracias por reportar. Rellena los campos para ayudarnos a reproducirlo.
+        _You can write in English or Spanish / Puedes escribir en inglés o español._
+  - type: textarea
+    id: description
+    attributes:
+      label: Description / Descripción
+      description: What happens and what did you expect? / ¿Qué ocurre y qué esperabas?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce / Pasos para reproducir
+      description: Ideally a minimal repro (StackBlitz, CodeSandbox, repo). / Idealmente un repro mínimo.
+      placeholder: |
+        1. Render <QRScanner ... />
+        2. ...
+        3. Observe the error / Observa el error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: qr-lens version / Versión de qr-lens
+      placeholder: '0.1.2'
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser / Navegador
+      options:
+        - Chrome
+        - Safari
+        - Firefox
+        - Edge
+        - Other / Otro (specify in description / especifica en la descripción)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / Entorno
+      description: React version, framework (Next.js/Vite/etc.), OS, device. / Versión de React, framework, SO, dispositivo.
+    validations:
+      required: false

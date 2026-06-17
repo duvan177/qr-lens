@@ -4,29 +4,31 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/qr-lens)](https://bundlephobia.com/package/qr-lens)
 [![license](https://img.shields.io/npm/l/qr-lens)](https://www.npmjs.com/package/qr-lens)
 
-📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)** · 🚀 **[Demo en vivo](https://qr-lens-demo.vercel.app)**
+**🌐 Language:** **English** · [Español](./README.es.md)
 
-Librería React para escaneo de códigos QR — ligera, accesible y compatible con SSR.
+📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)** · 🚀 **[Live demo](https://qr-lens-demo.vercel.app)**
 
-- Usa `BarcodeDetector` nativo cuando está disponible; cae automáticamente a `jsQR`
-- Expone un componente `<QRScanner />` y un hook headless `useQRScanner()`
-- Soporte de multi-cámara, linterna, tematización y i18n (es/en/pt)
-- Compatible con Next.js, Remix y cualquier bundler moderno
-- Cero CSS frameworks — estilos encapsulados con variables CSS
+React library for scanning QR codes — lightweight, accessible, and SSR-friendly.
+
+- Uses the native `BarcodeDetector` when available; automatically falls back to `jsQR`
+- Ships a `<QRScanner />` component and a headless `useQRScanner()` hook
+- Multi-camera, torch, theming, and i18n support (es/en/pt)
+- Works with Next.js, Remix, and any modern bundler
+- Zero CSS frameworks — styles are encapsulated with CSS variables
 
 ---
 
-## Instalación
+## Installation
 
 ```bash
 npm install qr-lens
-# o
+# or
 yarn add qr-lens
-# o
+# or
 pnpm add qr-lens
 ```
 
-React 18+ es peer dependency:
+React 18+ is a peer dependency:
 
 ```bash
 npm install react react-dom
@@ -34,7 +36,7 @@ npm install react react-dom
 
 ---
 
-## Inicio rápido
+## Quick start
 
 ```tsx
 import { QRScanner } from 'qr-lens';
@@ -42,8 +44,8 @@ import { QRScanner } from 'qr-lens';
 export default function Page() {
   return (
     <QRScanner
-      onScan={(value) => console.log('QR detectado:', value)}
-      locale="es"
+      onScan={(value) => console.log('QR detected:', value)}
+      locale="en"
     />
   );
 }
@@ -51,33 +53,33 @@ export default function Page() {
 
 ---
 
-## Componente `<QRScanner />`
+## `<QRScanner />` component
 
 ### Props
 
-| Prop | Tipo | Default | Descripción |
+| Prop | Type | Default | Description |
 |---|---|---|---|
-| `onScan` *(requerida)* | `(value: string, result: ScanResult) => void` | — | Callback al detectar un QR |
-| `onError` | `(error: ScannerError) => void` | — | Errores de cámara o detección |
-| `onPermissionChange` | `(status: PermissionStatus) => void` | — | Cambios en el estado del permiso |
-| `onCameraChange` | `(device: MediaDeviceInfo) => void` | — | Al cambiar de cámara |
-| `onReady` | `() => void` | — | Stream activo y escáner listo |
-| `facingMode` | `'environment' \| 'user'` | `'environment'` | Cámara trasera o frontal inicial |
-| `deviceId` | `string` | — | Forzar un dispositivo de cámara concreto |
-| `paused` | `boolean` | `false` | Pausar/reanudar el escaneo |
-| `scanDelay` | `number` | `500` | Cooldown entre lecturas (ms) |
-| `formats` | `string[]` | `['qr_code']` | Formatos a detectar (ver tabla de formatos) |
-| `theme` | `QRScannerTheme` | — | Colores personalizados (ver Tematización) |
-| `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Idioma de los textos de la UI |
-| `messages` | `Partial<Messages>` | — | Override manual de cadenas de texto |
-| `width` | `number \| string` | `'100%'` | Ancho del componente |
-| `height` | `number \| string` | `320` | Alto del componente |
-| `showCameraSwitch` | `boolean` | `true` | Mostrar botón de cambio de cámara |
-| `showTorch` | `boolean` | `true` | Mostrar botón de linterna (si el dispositivo lo soporta) |
-| `className` | `string` | — | Clase CSS adicional en el elemento raíz |
-| `style` | `CSSProperties` | — | Estilos inline adicionales |
+| `onScan` *(required)* | `(value: string, result: ScanResult) => void` | — | Called when a QR code is detected |
+| `onError` | `(error: ScannerError) => void` | — | Camera or detection errors |
+| `onPermissionChange` | `(status: PermissionStatus) => void` | — | Permission state changes |
+| `onCameraChange` | `(device: MediaDeviceInfo) => void` | — | When the active camera changes |
+| `onReady` | `() => void` | — | Stream is active and the scanner is ready |
+| `facingMode` | `'environment' \| 'user'` | `'environment'` | Initial rear or front camera |
+| `deviceId` | `string` | — | Force a specific camera device |
+| `paused` | `boolean` | `false` | Pause/resume scanning |
+| `scanDelay` | `number` | `500` | Cooldown between reads (ms) |
+| `formats` | `string[]` | `['qr_code']` | Formats to detect (see formats table) |
+| `theme` | `QRScannerTheme` | — | Custom colors (see Theming) |
+| `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Language of the UI strings |
+| `messages` | `Partial<Messages>` | — | Manual override of text strings |
+| `width` | `number \| string` | `'100%'` | Component width |
+| `height` | `number \| string` | `320` | Component height |
+| `showCameraSwitch` | `boolean` | `true` | Show the camera-switch button |
+| `showTorch` | `boolean` | `true` | Show the torch button (if the device supports it) |
+| `className` | `string` | — | Extra CSS class on the root element |
+| `style` | `CSSProperties` | — | Extra inline styles |
 
-### Ejemplo completo
+### Full example
 
 ```tsx
 import { useRef } from 'react';
@@ -88,14 +90,14 @@ function Scanner() {
   const ref = useRef<QRScannerHandle>(null);
 
   const handleScan = (value: string, result: ScanResult) => {
-    console.log('Valor:', value);
-    console.log('Esquinas:', result.cornerPoints);
+    console.log('Value:', value);
+    console.log('Corners:', result.cornerPoints);
     console.log('Timestamp:', result.timestamp);
   };
 
   const handleError = (error: ScannerError) => {
     if (error.type === 'permission-denied') {
-      // Mostrar UI propia de permiso denegado
+      // Show your own permission-denied UI
     }
   };
 
@@ -104,8 +106,8 @@ function Scanner() {
       ref={ref}
       onScan={handleScan}
       onError={handleError}
-      onReady={() => console.log('Cámara lista')}
-      locale="es"
+      onReady={() => console.log('Camera ready')}
+      locale="en"
       facingMode="environment"
       scanDelay={600}
       width={400}
@@ -120,47 +122,47 @@ function Scanner() {
 
 ---
 
-## API imperativa (ref)
+## Imperative API (ref)
 
-Al pasar un `ref` al componente, obtienes acceso a los métodos de control:
+Passing a `ref` to the component gives you access to the control methods:
 
 ```tsx
 const ref = useRef<QRScannerHandle>(null);
 
-// Iniciar/detener
+// Start/stop
 ref.current?.start();
 ref.current?.stop();
 
-// Pausar/reanudar (mantiene el stream activo)
+// Pause/resume (keeps the stream active)
 ref.current?.pause();
 ref.current?.resume();
 
-// Cambiar de cámara
+// Switch camera
 ref.current?.switchCamera();
 
-// Obtener lista de cámaras disponibles
+// Get the list of available cameras
 const cameras = await ref.current?.getCameras();
 
-// Linterna
+// Torch
 ref.current?.setTorch(true);
 ref.current?.setTorch(false);
 ```
 
-| Método | Firma | Descripción |
+| Method | Signature | Description |
 |---|---|---|
-| `start()` | `() => Promise<void>` | Inicia la cámara y el loop de detección |
-| `stop()` | `() => void` | Detiene y libera todos los recursos |
-| `pause()` | `() => void` | Pausa la detección (stream sigue activo) |
-| `resume()` | `() => void` | Reanuda la detección |
-| `switchCamera()` | `() => Promise<void>` | Cambia a la siguiente cámara disponible |
-| `getCameras()` | `() => Promise<MediaDeviceInfo[]>` | Lista los dispositivos de vídeo |
-| `setTorch(on)` | `(on: boolean) => Promise<void>` | Activa/desactiva la linterna |
+| `start()` | `() => Promise<void>` | Starts the camera and the detection loop |
+| `stop()` | `() => void` | Stops and releases all resources |
+| `pause()` | `() => void` | Pauses detection (stream stays active) |
+| `resume()` | `() => void` | Resumes detection |
+| `switchCamera()` | `() => Promise<void>` | Switches to the next available camera |
+| `getCameras()` | `() => Promise<MediaDeviceInfo[]>` | Lists video devices |
+| `setTorch(on)` | `(on: boolean) => Promise<void>` | Turns the torch on/off |
 
 ---
 
-## Hook headless `useQRScanner()`
+## Headless hook `useQRScanner()`
 
-Para integraciones donde necesitas control total sobre el renderizado:
+For integrations where you need full control over rendering:
 
 ```tsx
 import { useRef } from 'react';
@@ -182,69 +184,69 @@ function CustomScanner() {
   } = useQRScanner({
     onScan: (value, result) => console.log(value, result),
     onError: (err) => console.error(err),
-    locale: 'es',
+    locale: 'en',
     scanDelay: 500,
   });
 
-  if (permissionStatus === 'denied') return <p>Permiso denegado</p>;
+  if (permissionStatus === 'denied') return <p>Permission denied</p>;
 
   return (
     <div style={{ position: 'relative', width: 400, height: 300 }}>
       <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
       {isReady && cameras.length > 1 && (
-        <button onClick={switchCamera}>Cambiar cámara</button>
+        <button onClick={switchCamera}>Switch camera</button>
       )}
     </div>
   );
 }
 ```
 
-### Opciones del hook
+### Hook options
 
-Acepta las mismas props de comportamiento que `<QRScanner />` (sin las de UI):
+Accepts the same behavioral props as `<QRScanner />` (without the UI ones):
 `onScan`, `onError`, `onPermissionChange`, `onCameraChange`, `onReady`, `facingMode`, `deviceId`, `paused`, `scanDelay`, `formats`.
 
-### Valores devueltos
+### Returned values
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |---|---|---|
-| `videoRef` | `RefObject<HTMLVideoElement>` | Ref para el elemento `<video>` |
-| `canvasRef` | `RefObject<HTMLCanvasElement>` | Ref para el canvas de overlay |
-| `permissionStatus` | `PermissionStatus` | Estado actual del permiso de cámara |
-| `cameras` | `MediaDeviceInfo[]` | Dispositivos de vídeo disponibles |
-| `currentCamera` | `MediaDeviceInfo \| null` | Dispositivo activo |
-| `isReady` | `boolean` | `true` cuando el stream está activo |
-| `isScanning` | `boolean` | `true` cuando el loop de detección está corriendo |
-| `torchSupported` | `boolean` | El dispositivo soporta linterna |
-| `torchOn` | `boolean` | Estado actual de la linterna |
-| `lastResult` | `ScanResult \| null` | Último QR detectado |
-| + todos los métodos de `QRScannerHandle` | | `start`, `stop`, `pause`, `resume`, `switchCamera`, `getCameras`, `setTorch` |
+| `videoRef` | `RefObject<HTMLVideoElement>` | Ref for the `<video>` element |
+| `canvasRef` | `RefObject<HTMLCanvasElement>` | Ref for the overlay canvas |
+| `permissionStatus` | `PermissionStatus` | Current camera-permission state |
+| `cameras` | `MediaDeviceInfo[]` | Available video devices |
+| `currentCamera` | `MediaDeviceInfo \| null` | Active device |
+| `isReady` | `boolean` | `true` when the stream is active |
+| `isScanning` | `boolean` | `true` when the detection loop is running |
+| `torchSupported` | `boolean` | The device supports a torch |
+| `torchOn` | `boolean` | Current torch state |
+| `lastResult` | `ScanResult \| null` | Last detected QR code |
+| + all `QRScannerHandle` methods | | `start`, `stop`, `pause`, `resume`, `switchCamera`, `getCameras`, `setTorch` |
 
 ---
 
-## Tematización
+## Theming
 
-Todos los colores se mapean a variables CSS que puedes sobreescribir:
+All colors map to CSS variables you can override:
 
 ```tsx
 <QRScanner
   onScan={...}
   theme={{
-    accent:  '#30D158',           // borde del QR detectado
-    primary: '#FFFFFF',           // color principal
-    bg:      'rgba(0,0,0,0.9)',   // fondo del componente
-    overlay: 'rgba(0,0,0,0.6)',   // fondo de estados (cargando, error)
-    text:    '#FFFFFF',           // texto de la UI
-    radius:  '20px',              // radio de borde del componente
+    accent:  '#30D158',           // border of the detected QR
+    primary: '#FFFFFF',           // primary color
+    bg:      'rgba(0,0,0,0.9)',   // component background
+    overlay: 'rgba(0,0,0,0.6)',   // state overlays (loading, error)
+    text:    '#FFFFFF',           // UI text
+    radius:  '20px',              // component border radius
   }}
 />
 ```
 
-También puedes sobreescribirlas globalmente en tu CSS:
+You can also override them globally in your CSS:
 
 ```css
-.mi-escaner {
+.my-scanner {
   --qr-accent:  #FF6B35;
   --qr-bg:      #1a1a2e;
   --qr-radius:  12px;
@@ -252,33 +254,33 @@ También puedes sobreescribirlas globalmente en tu CSS:
 ```
 
 ```tsx
-<QRScanner onScan={...} className="mi-escaner" />
+<QRScanner onScan={...} className="my-scanner" />
 ```
 
 ---
 
-## Internacionalización
+## Internationalization
 
-Idiomas incluidos: **español (`es`)**, **inglés (`en`)**, **portugués (`pt`)**.
+Bundled languages: **Spanish (`es`)**, **English (`en`)**, **Portuguese (`pt`)**.
 
 ```tsx
-<QRScanner onScan={...} locale="es" />
+<QRScanner onScan={...} locale="en" />
 ```
 
-### Override de textos puntuales
+### Override individual strings
 
 ```tsx
 <QRScanner
   onScan={...}
-  locale="es"
+  locale="en"
   messages={{
-    aimAtQR: 'Enfoca el código',
-    permissionDenied: 'Sin acceso a la cámara',
+    aimAtQR: 'Focus the code',
+    permissionDenied: 'No camera access',
   }}
 />
 ```
 
-### Registrar un idioma nuevo
+### Register a new language
 
 ```ts
 import { registerLocale } from 'qr-lens';
@@ -299,9 +301,9 @@ registerLocale('fr', {
 
 ---
 
-## Formatos soportados
+## Supported formats
 
-| Formato | BarcodeDetector nativo | Fallback jsQR |
+| Format | Native BarcodeDetector | jsQR fallback |
 |---|:---:|:---:|
 | `qr_code` | ✅ | ✅ |
 | `aztec` | ✅ | ❌ |
@@ -313,7 +315,7 @@ registerLocale('fr', {
 | `pdf417` | ✅ | ❌ |
 | `upc_a` | ✅ | ❌ |
 
-> El fallback a `jsQR` se activa automáticamente cuando `BarcodeDetector` no está disponible. Solo detecta `qr_code`. Para otros formatos se requiere un navegador con soporte nativo (Chrome 83+, Edge 83+).
+> The `jsQR` fallback kicks in automatically when `BarcodeDetector` is unavailable. It only detects `qr_code`. Other formats require a browser with native support (Chrome 83+, Edge 83+).
 
 ```tsx
 <QRScanner
@@ -324,21 +326,21 @@ registerLocale('fr', {
 
 ---
 
-## Uso con Next.js (SSR)
+## Usage with Next.js (SSR)
 
-El componente es SSR-safe. Todos los accesos a `window`, `navigator` y `document` están protegidos. No se necesita configuración adicional en Next.js 13+ (App Router):
+The component is SSR-safe. Every access to `window`, `navigator`, and `document` is guarded. No extra configuration is needed in Next.js 13+ (App Router):
 
 ```tsx
 // app/scan/page.tsx
 import { QRScanner } from 'qr-lens';
 
 export default function ScanPage() {
-  'use client'; // necesario porque usa hooks y APIs del navegador
+  'use client'; // required because it uses hooks and browser APIs
   return <QRScanner onScan={(v) => console.log(v)} />;
 }
 ```
 
-Con Pages Router:
+With the Pages Router:
 
 ```tsx
 // pages/scan.tsx
@@ -352,7 +354,7 @@ const QRScanner = dynamic(
 
 ---
 
-## Referencia de tipos TypeScript
+## TypeScript type reference
 
 ```ts
 import type {
@@ -375,11 +377,11 @@ import type {
 
 ```ts
 interface ScanResult {
-  value: string;       // contenido decodificado
-  format: string;      // ej. 'qr_code'
-  cornerPoints?: Point[];  // esquinas en coordenadas del frame de vídeo
+  value: string;       // decoded content
+  format: string;      // e.g. 'qr_code'
+  cornerPoints?: Point[];  // corners in video-frame coordinates
   boundingBox?: { x: number; y: number; width: number; height: number };
-  timestamp: number;   // Date.now() al momento de la detección
+  timestamp: number;   // Date.now() at the moment of detection
 }
 ```
 
@@ -401,61 +403,67 @@ type PermissionStatus = 'prompt' | 'granted' | 'denied' | 'unavailable';
 
 ---
 
-## Compatibilidad de navegadores
+## Browser compatibility
 
-| Navegador | Soporte | Modo de detección |
+| Browser | Support | Detection mode |
 |---|:---:|---|
-| Chrome 88+ (desktop) | ✅ | BarcodeDetector nativo |
-| Chrome 88+ (Android) | ✅ | BarcodeDetector nativo |
-| Edge 88+ | ✅ | BarcodeDetector nativo |
+| Chrome 88+ (desktop) | ✅ | Native BarcodeDetector |
+| Chrome 88+ (Android) | ✅ | Native BarcodeDetector |
+| Edge 88+ | ✅ | Native BarcodeDetector |
 | Safari 16+ (macOS/iOS) | ✅ | jsQR (fallback) |
 | Firefox | ✅ | jsQR (fallback) |
-| Samsung Internet 11+ | ✅ | BarcodeDetector nativo |
+| Samsung Internet 11+ | ✅ | Native BarcodeDetector |
 
-> `getUserMedia` requiere **HTTPS** en producción. En `localhost` funciona sin certificado.
+> `getUserMedia` requires **HTTPS** in production. On `localhost` it works without a certificate.
 
 ---
 
-## Consideraciones de seguridad y privacidad (auditoría)
+## Security & privacy notes (audit)
 
-### Permisos de cámara
-- La librería solicita acceso a la cámara únicamente mediante `navigator.mediaDevices.getUserMedia`.
-- No solicita audio (`audio: false` en todos los casos).
-- El stream se libera completamente (`track.stop()`) al desmontar el componente, al pausar y al cambiar de cámara.
-- La pestaña pausa automáticamente el escaneo al perder visibilidad (`visibilitychange`), evitando grabación pasiva en segundo plano.
+### Camera permissions
+- The library requests camera access only through `navigator.mediaDevices.getUserMedia`.
+- It never requests audio (`audio: false` in all cases).
+- The stream is fully released (`track.stop()`) when the component unmounts, on pause, and when switching cameras.
+- The tab automatically pauses scanning when it loses visibility (`visibilitychange`), preventing passive background recording.
 
-### Procesamiento de imágenes
-- Los frames de vídeo se procesan **localmente en el navegador**. Ningún frame ni imagen se envía a servidores externos.
-- El canvas de detección (`jsQR`) es un elemento DOM no adjunto al documento, invisible para el usuario.
-- La API nativa `BarcodeDetector` también procesa localmente; no realiza llamadas de red.
+### Image processing
+- Video frames are processed **locally in the browser**. No frame or image is sent to external servers.
+- The detection canvas (`jsQR`) is a DOM element not attached to the document, invisible to the user.
+- The native `BarcodeDetector` API also processes locally; it makes no network calls.
 
-### Datos detectados
-- La librería devuelve el valor decodificado del QR como string. **No almacena, registra ni transmite ningún valor escaneado**.
-- El historial de lecturas es responsabilidad de la aplicación que consume la librería.
+### Detected data
+- The library returns the decoded QR value as a string. **It does not store, log, or transmit any scanned value**.
+- Scan history is the responsibility of the consuming application.
 
-### Dependencias
-| Paquete | Versión | Propósito | Cargado condicionalmente |
+### Dependencies
+| Package | Version | Purpose | Loaded conditionally |
 |---|---|---|:---:|
-| `jsqr` | ^1.4.0 | Detección QR fallback (sin WASM) | Sí — solo si BarcodeDetector no está disponible |
+| `jsqr` | ^1.4.0 | QR fallback detection (no WASM) | Yes — only if BarcodeDetector is unavailable |
 
-`jsqr` no tiene dependencias transitivas y no realiza llamadas de red.
+`jsqr` has no transitive dependencies and makes no network calls.
 
-### Surface de ataque
-- No hay endpoints de red, WebSockets ni workers.
-- No usa `eval`, `Function()` ni técnicas de ejecución dinámica de código.
-- Los valores QR devueltos en `onScan` son strings sin procesar. La aplicación consumidora es responsable de sanitizar cualquier URL u otro contenido antes de navegarlo o ejecutarlo.
-
----
-
-## Rendimiento
-
-- El loop de detección usa `requestAnimationFrame` para animación fluida (~60 fps).
-- La detección real se limita con `scanDelay` (default 500 ms) para no saturar la CPU.
-- El detector se cachea: `BarcodeDetector` y `jsQR` se instancian una sola vez por sesión.
-- `jsQR` se carga mediante `import()` dinámico solo si el navegador no soporta `BarcodeDetector`, manteniendo el bundle inicial ligero.
+### Attack surface
+- No network endpoints, WebSockets, or workers.
+- No `eval`, `Function()`, or dynamic code-execution techniques.
+- QR values returned in `onScan` are raw strings. The consuming application is responsible for sanitizing any URL or other content before navigating to or executing it.
 
 ---
 
-## Licencia
+## Performance
 
-MIT © 2026
+- The detection loop uses `requestAnimationFrame` for smooth animation (~60 fps).
+- Actual detection is throttled with `scanDelay` (default 500 ms) to avoid saturating the CPU.
+- The detector is cached: `BarcodeDetector` and `jsQR` are instantiated only once per session.
+- `jsQR` is loaded via dynamic `import()` only when the browser lacks `BarcodeDetector`, keeping the initial bundle lightweight.
+
+---
+
+## Contributing
+
+Contributions are welcome! Read the [Contributing Guide](./CONTRIBUTING.md) and the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+---
+
+## License
+
+MIT © 2026 Duvan Narvaez

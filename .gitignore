@@ -26,3 +26,6 @@ Thumbs.db
 
 # Caché de Vite
 .vite/
+
+# Cobertura de tests
+coverage/
