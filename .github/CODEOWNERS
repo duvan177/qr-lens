@@ -1,0 +1,12 @@
+# CODEOWNERS — auto-requests review from these owners on matching PRs.
+# Docs: https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repo
+*       @duvan177
+
+# CI / release / repo automation
+/.github/        @duvan177
+/.changeset/     @duvan177
+
+# Public API surface and core logic
+/src/            @duvan177

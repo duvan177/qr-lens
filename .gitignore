@@ -20,9 +20,15 @@ Thumbs.db
 .idea/
 *.swp
 
+# Configuración local de Claude Code (por desarrollador)
+.claude/settings.local.json
+
 # Variables de entorno
 .env
 .env.local
 
 # Caché de Vite
 .vite/
+
+# Cobertura de tests
+coverage/

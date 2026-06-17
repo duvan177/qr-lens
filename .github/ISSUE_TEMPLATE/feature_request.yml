@@ -1,0 +1,28 @@
+name: ✨ Feature request / Propuesta de funcionalidad
+description: Suggest an improvement or new feature / Sugiere una mejora o nueva característica
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: _You can write in English or Spanish / Puedes escribir en inglés o español._
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation / Problema o motivación
+      description: What need does this address? / ¿Qué necesidad cubre esta propuesta?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution / Solución propuesta
+      description: Describe the API or behavior you imagine. / Describe la API o el comportamiento que imaginas.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / Alternativas consideradas
+    validations:
+      required: false

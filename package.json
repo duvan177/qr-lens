@@ -6,6 +6,7 @@
   "main": "./dist/qr-lens.umd.js",
   "module": "./dist/qr-lens.es.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "import": "./dist/qr-lens.es.js",
@@ -14,16 +15,55 @@
     }
   },
   "license": "MIT",
+  "author": "Duvan Narvaez",
+  "homepage": "https://github.com/duvan177/qr-lens#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duvan177/qr-lens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/duvan177/qr-lens/issues"
+  },
+  "keywords": [
+    "qr",
+    "qr-code",
+    "qrcode",
+    "scanner",
+    "qr-scanner",
+    "barcode",
+    "barcode-detector",
+    "react",
+    "react-hook",
+    "camera",
+    "webcam",
+    "jsqr",
+    "typescript",
+    "ssr"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "dist",
-    "LICENSE"
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc -p tsconfig.build.json",
     "build:demo": "vite build --config vite.demo.config.ts",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "preview": "vite preview",
+    "changeset": "changeset",
+    "release": "npm run build && changeset publish",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -33,13 +73,25 @@
     "jsqr": "^1.4.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4",
+    "@vitest/coverage-v8": "^1.6.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "jsdom": "^24.0.0",
+    "prettier": "^3.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^5",
     "vite": "^5",
-    "vite-plugin-dts": "^3"
+    "vite-plugin-dts": "^3",
+    "vitest": "^1.6.0"
   }
 }
