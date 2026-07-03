@@ -219,8 +219,19 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
     }
 
     try {
-      // Pre-carga el detector antes de iniciar la cámara para evitar lag
-      detectorRef.current = await getDetector(formats);
+      // Pre-carga el detector antes de iniciar la cámara para evitar lag.
+      // Un fallo aquí no debe bloquear la cámara: sin detector, el preview
+      // sigue funcionando y solo se pierde la detección automática.
+      try {
+        detectorRef.current = await getDetector(formats);
+      } catch (detectorErr) {
+        detectorRef.current = null;
+        onErrorRef.current?.({
+          type: 'detection-error',
+          message: (detectorErr as Error).message,
+          originalError: detectorErr,
+        });
+      }
 
       const stream = await requestCamera(facingMode, deviceId);
       if (!mountedRef.current) { stopStream(stream); return; }
