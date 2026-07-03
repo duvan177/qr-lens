@@ -1,3 +1,4 @@
+import jsQR from 'jsqr';
 import type { Point } from '../types';
 
 export interface RawDetection {
@@ -57,9 +58,7 @@ async function buildNativeDetector(formats: string[]): Promise<DetectFn | null> 
   }
 }
 
-async function buildJsQRDetector(): Promise<DetectFn> {
-  const { default: jsQR } = await import('jsqr');
-
+function buildJsQRDetector(): DetectFn {
   return async (video: HTMLVideoElement): Promise<RawDetection[]> => {
     const w = video.videoWidth;
     const h = video.videoHeight;
@@ -106,14 +105,21 @@ export async function getDetector(formats: string[] = ['qr_code']): Promise<Dete
   if (_detectorPromise) return _detectorPromise;
 
   _detectorPromise = (async () => {
-    const native = await buildNativeDetector(formats);
-    if (native) {
-      _detector = native;
-      return native;
+    try {
+      const native = await buildNativeDetector(formats);
+      if (native) {
+        _detector = native;
+        return native;
+      }
+      const fallback = buildJsQRDetector();
+      _detector = fallback;
+      return fallback;
+    } catch (err) {
+      // No deja la promesa cacheada en un estado roto: un fallo aquí no debe
+      // impedir reintentos futuros (p. ej. tras cambiar de navegador/formats).
+      _detectorPromise = null;
+      throw err;
     }
-    const fallback = await buildJsQRDetector();
-    _detector = fallback;
-    return fallback;
   })();
 
   return _detectorPromise;
