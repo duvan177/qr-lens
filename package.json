@@ -1,6 +1,6 @@
 {
   "name": "qr-lens",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Librería reutilizable de escaneo QR para React — ligera, accesible y compatible con SSR",
   "type": "module",
   "main": "./dist/qr-lens.umd.js",
