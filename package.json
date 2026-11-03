@@ -9,9 +9,9 @@
   "sideEffects": false,
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/qr-lens.es.js",
-      "require": "./dist/qr-lens.umd.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/qr-lens.umd.js"
     }
   },
   "license": "MIT",

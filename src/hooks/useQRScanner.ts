@@ -7,6 +7,7 @@ import {
   isTorchSupported,
   setTorchState,
   findCurrentCamera,
+  applyContinuousFocus,
 } from '../utils/camera';
 import {
   drawQRBorder,
@@ -21,6 +22,14 @@ import type {
   ScanResult,
   Point,
 } from '../types';
+
+/**
+ * Activa el enfoque continuo. Best effort y sin bloquear: un fallo o un
+ * applyConstraints lento no deben retrasar ni cortar la cámara.
+ */
+function tuneStream(stream: MediaStream): void {
+  applyContinuousFocus(stream).catch(() => false);
+}
 
 export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const {
@@ -53,6 +62,9 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const noDetectionCountRef = useRef(0);
   const mountedRef = useRef(true);
   const pausedRef = useRef(paused);
+  // Se incrementa en cada start/stop/switchCamera: una operación asíncrona que
+  // termina con un id antiguo sabe que fue cancelada y libera su stream
+  const sessionRef = useRef(0);
 
   // Puntos del QR en coordenadas de vídeo
   const targetPointsRef = useRef<Point[] | null>(null);
@@ -206,6 +218,44 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
 
   // ─── Control de cámara ───────────────────────────────────────────────────────
 
+  /** Conecta un stream nuevo al <video> y sincroniza cámaras y linterna */
+  const attachStream = useCallback(
+    async (stream: MediaStream, isStale: () => boolean): Promise<boolean> => {
+      streamRef.current = stream;
+      tuneStream(stream);
+
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        await video.play();
+      }
+      if (isStale()) return false;
+
+      // Re-enumerar tras el stream para obtener labels completos
+      const cams = await enumerateCameras();
+      if (isStale()) return false;
+      setCameras(cams);
+      const current = findCurrentCamera(stream, cams);
+      setCurrentCamera(current);
+      if (current) onCameraChangeRef.current?.(current);
+
+      setTorchSupported(isTorchSupported(stream));
+      setTorchOn(false);
+      return true;
+    },
+    []
+  );
+
+  /** Libera el stream activo y limpia el overlay */
+  const releaseStream = useCallback(() => {
+    stopLoop();
+    stopStream(streamRef.current);
+    streamRef.current = null;
+    targetPointsRef.current = null;
+    currentPointsRef.current = null;
+    overlayOpacityRef.current = 0;
+  }, [stopLoop]);
+
   const start = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
@@ -217,6 +267,11 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
       });
       return;
     }
+
+    const session = ++sessionRef.current;
+    const isStale = () => !mountedRef.current || session !== sessionRef.current;
+    // start() sobre un escáner activo reinicia la cámara en vez de abrir una segunda
+    releaseStream();
 
     try {
       // Pre-carga el detector antes de iniciar la cámara para evitar lag.
@@ -232,33 +287,22 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
           originalError: detectorErr,
         });
       }
+      if (isStale()) return;
 
       const stream = await requestCamera(facingMode, deviceId);
-      if (!mountedRef.current) { stopStream(stream); return; }
-
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await video.play();
-      }
+      if (isStale()) { stopStream(stream); return; }
 
       setPermissionStatus('granted');
       onPermissionChangeRef.current?.('granted');
 
-      const cams = await enumerateCameras();
-      setCameras(cams);
-      const current = findCurrentCamera(stream, cams);
-      setCurrentCamera(current);
-      if (current) onCameraChangeRef.current?.(current);
+      if (!(await attachStream(stream, isStale))) return;
 
-      setTorchSupported(isTorchSupported(stream));
+      activeFacingRef.current = facingMode;
       setIsReady(true);
       onReadyRef.current?.();
       startLoop();
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (isStale()) return;
       const error = err as Error;
 
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -272,21 +316,18 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
         onErrorRef.current?.({ type: 'camera-error', message: error.message, originalError: err });
       }
     }
-  }, [facingMode, deviceId, formats, startLoop]);
+  }, [facingMode, deviceId, formats, attachStream, releaseStream, startLoop]);
 
   const stop = useCallback(() => {
-    stopLoop();
-    stopStream(streamRef.current);
-    streamRef.current = null;
+    // Cancela cualquier start/switchCamera en curso
+    sessionRef.current++;
+    releaseStream();
     setIsReady(false);
     setIsScanning(false);
+    setTorchOn(false);
     const video = videoRef.current;
     if (video) video.srcObject = null;
-    // Reset overlay
-    targetPointsRef.current = null;
-    currentPointsRef.current = null;
-    overlayOpacityRef.current = 0;
-  }, [stopLoop]);
+  }, [releaseStream]);
 
   const pause = useCallback(() => {
     pausedRef.current = true;
@@ -299,54 +340,55 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   }, []);
 
   const switchCamera = useCallback(async () => {
-    stopLoop();
-    stopStream(streamRef.current);
-    streamRef.current = null;
-    targetPointsRef.current = null;
-    currentPointsRef.current = null;
-    overlayOpacityRef.current = 0;
+    const session = ++sessionRef.current;
+    const isStale = () => !mountedRef.current || session !== sessionRef.current;
+    const previousId = currentCamera?.deviceId;
+    const previousFacing = activeFacingRef.current;
+    releaseStream();
 
     try {
       const cams = await enumerateCameras();
 
       let nextDeviceId: string | undefined;
-      let nextFacing: 'environment' | 'user' = activeFacingRef.current;
+      let nextFacing: 'environment' | 'user' = previousFacing;
 
       if (cams.length >= 2) {
         // Hay múltiples cámaras: avanzar al siguiente deviceId
-        const idx = currentCamera
-          ? cams.findIndex((c) => c.deviceId === currentCamera.deviceId)
-          : 0;
-        const next = cams[(idx + 1) % cams.length];
-        nextDeviceId = next.deviceId;
-        setCameras(cams);
+        const idx = previousId ? cams.findIndex((c) => c.deviceId === previousId) : 0;
+        nextDeviceId = cams[(idx + 1) % cams.length].deviceId;
       } else {
         // Solo 1 cámara enumerada (típico en iOS antes del segundo getUserMedia):
         // alternar facingMode environment ↔ user
-        nextFacing = activeFacingRef.current === 'environment' ? 'user' : 'environment';
-        activeFacingRef.current = nextFacing;
+        nextFacing = previousFacing === 'environment' ? 'user' : 'environment';
       }
 
       const stream = await requestCamera(nextFacing, nextDeviceId);
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) { video.srcObject = stream; await video.play(); }
-
-      // Re-enumerar tras el nuevo stream para obtener labels completos
-      const updatedCams = await enumerateCameras();
-      setCameras(updatedCams);
-      const current = findCurrentCamera(stream, updatedCams);
-      setCurrentCamera(current);
-      if (current) onCameraChangeRef.current?.(current);
-
-      setTorchSupported(isTorchSupported(stream));
-      setTorchOn(false);
+      if (isStale()) { stopStream(stream); return; }
+      activeFacingRef.current = nextFacing;
+      if (!(await attachStream(stream, isStale))) return;
       startLoop();
     } catch (err: unknown) {
+      if (isStale()) return;
       onErrorRef.current?.({ type: 'camera-error', message: (err as Error).message, originalError: err });
-      startLoop(); // reanudar con la cámara anterior si falla
+
+      // El stream anterior ya se liberó: intentar volver a la cámara previa
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      try {
+        const stream = await requestCamera(previousFacing, previousId);
+        if (isStale()) { stopStream(stream); return; }
+        activeFacingRef.current = previousFacing;
+        if (!(await attachStream(stream, isStale))) return;
+        startLoop();
+      } catch {
+        if (isStale()) return;
+        stopStream(streamRef.current);
+        streamRef.current = null;
+        setIsReady(false);
+        setIsScanning(false);
+      }
     }
-  }, [currentCamera, stopLoop, startLoop]);
+  }, [currentCamera, attachStream, releaseStream, startLoop]);
 
   const getCameras = useCallback(async () => {
     const cams = await enumerateCameras();
