@@ -454,7 +454,7 @@ type PermissionStatus = 'prompt' | 'granted' | 'denied' | 'unavailable';
 - El loop de detección usa `requestAnimationFrame` para animación fluida (~60 fps).
 - La detección real se limita con `scanDelay` (default 500 ms) para no saturar la CPU.
 - El detector se cachea: `BarcodeDetector` y `jsQR` se instancian una sola vez por sesión.
-- `jsQR` se carga mediante `import()` dinámico solo si el navegador no soporta `BarcodeDetector`, manteniendo el bundle inicial ligero.
+- `jsQR` va incluido en el bundle y solo se instancia si el navegador no soporta `BarcodeDetector`.
 
 ---
 

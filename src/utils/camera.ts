@@ -1,3 +1,27 @@
+/** Capabilities de imagen que aún no están en lib.dom (Media Capture Image) */
+type ExtendedCapabilities = MediaTrackCapabilities & {
+  focusMode?: string[];
+  torch?: boolean;
+};
+
+function getCaps(track: MediaStreamTrack): ExtendedCapabilities {
+  return (track.getCapabilities?.() ?? {}) as ExtendedCapabilities;
+}
+
+/**
+ * Aplica constraints avanzadas sin perder las anteriores.
+ * applyConstraints reemplaza el set completo, así que sin el merge activar
+ * la linterna desharía el zoom o el modo de enfoque.
+ */
+async function applyAdvanced(
+  track: MediaStreamTrack,
+  set: Record<string, unknown>
+): Promise<void> {
+  const prev = track.getConstraints?.() ?? {};
+  const merged = Object.assign({}, ...(prev.advanced ?? []), set);
+  await track.applyConstraints({ ...prev, advanced: [merged as MediaTrackConstraintSet] });
+}
+
 /**
  * Solicita acceso a la cámara con el facing mode o deviceId indicados.
  * Lanza NotAllowedError si el usuario deniega, NotFoundError si no hay cámara.
@@ -10,9 +34,12 @@ export async function requestCamera(
     throw Object.assign(new Error('getUserMedia not supported'), { name: 'NotSupportedError' });
   }
 
-  const videoConstraints: MediaTrackConstraints = deviceId
-    ? { deviceId: { exact: deviceId } }
-    : { facingMode: { ideal: facingMode } };
+  const videoConstraints: MediaTrackConstraints & { focusMode?: ConstrainDOMString } = {
+    ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: facingMode } }),
+    // focusMode no está en los tipos estándar aún; los navegadores que no lo
+    // soportan ignoran las constraints `ideal` desconocidas
+    focusMode: { ideal: 'continuous' },
+  };
 
   return navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
 }
@@ -41,8 +68,15 @@ export function isTorchSupported(stream: MediaStream): boolean {
 export async function setTorchState(stream: MediaStream, on: boolean): Promise<void> {
   const track = stream.getVideoTracks()[0];
   if (!track) throw new Error('No video track available');
-  // torch no está en los tipos estándar aún
-  await track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] });
+  await applyAdvanced(track, { torch: on });
+}
+
+/** Activa el autoenfoque continuo si el dispositivo lo soporta */
+export async function applyContinuousFocus(stream: MediaStream): Promise<boolean> {
+  const track = stream.getVideoTracks()[0];
+  if (!track || !getCaps(track).focusMode?.includes('continuous')) return false;
+  await applyAdvanced(track, { focusMode: 'continuous' });
+  return true;
 }
 
 /**

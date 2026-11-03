@@ -6,6 +6,7 @@ import {
   isTorchSupported,
   setTorchState,
   findCurrentCamera,
+  applyContinuousFocus,
 } from '../src/utils/camera';
 
 function makeTrack(overrides: Partial<MediaStreamTrack> = {}): MediaStreamTrack {
@@ -46,7 +47,7 @@ describe('requestCamera', () => {
 
     await requestCamera('user');
     expect(getUserMedia).toHaveBeenCalledWith({
-      video: { facingMode: { ideal: 'user' } },
+      video: { facingMode: { ideal: 'user' }, focusMode: { ideal: 'continuous' } },
       audio: false,
     });
   });
@@ -60,7 +61,7 @@ describe('requestCamera', () => {
 
     await requestCamera('environment', 'cam-123');
     expect(getUserMedia).toHaveBeenCalledWith({
-      video: { deviceId: { exact: 'cam-123' } },
+      video: { deviceId: { exact: 'cam-123' }, focusMode: { ideal: 'continuous' } },
       audio: false,
     });
   });
@@ -143,5 +144,37 @@ describe('findCurrentCamera', () => {
   it('cae a la primera cámara si no hay coincidencia', () => {
     const track = makeTrack({ getSettings: vi.fn(() => ({ deviceId: 'z' })) as never });
     expect(findCurrentCamera(makeStream([track]), cams)).toBe(cams[0]);
+  });
+});
+
+describe('setTorchState — merge de constraints', () => {
+  it('conserva las constraints avanzadas previas (focusMode)', async () => {
+    const applyConstraints = vi.fn(() => Promise.resolve());
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getConstraints: vi.fn(() => ({ advanced: [{ focusMode: 'continuous' }] })) as never,
+    });
+    await setTorchState(makeStream([track]), true);
+    expect(applyConstraints).toHaveBeenCalledWith({
+      advanced: [{ focusMode: 'continuous', torch: true }],
+    });
+  });
+});
+
+describe('applyContinuousFocus', () => {
+  it('aplica focusMode continuous si está soportado', async () => {
+    const applyConstraints = vi.fn(() => Promise.resolve());
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getCapabilities: vi.fn(() => ({ focusMode: ['continuous'] })) as never,
+    });
+    await expect(applyContinuousFocus(makeStream([track]))).resolves.toBe(true);
+    expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ focusMode: 'continuous' }] });
+  });
+
+  it('no hace nada si no está soportado', async () => {
+    const track = makeTrack();
+    await expect(applyContinuousFocus(makeStream([track]))).resolves.toBe(false);
+    expect(track.applyConstraints).not.toHaveBeenCalled();
   });
 });
