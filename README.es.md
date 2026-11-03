@@ -69,6 +69,8 @@ export default function Page() {
 | `paused` | `boolean` | `false` | Pausar/reanudar el escaneo |
 | `scanDelay` | `number` | `500` | Cooldown entre lecturas (ms) |
 | `formats` | `string[]` | `['qr_code']` | Formatos a detectar (ver tabla de formatos) |
+| `zoom` | `number \| 'auto'` | `1` | Zoom de la cámara si está soportado. `'auto'` aplica 1.5× en la cámara trasera para que el usuario no acerque el móvil más allá de su distancia mínima de enfoque. Recomendado en móviles |
+| `autofocus` | `boolean` | `true` | Estrategias activas de enfoque: cambiar a una cámara trasera con autoenfoque si la elegida es de enfoque fijo, y forzar un nuevo barrido de enfoque si no hay lecturas. `false` las desactiva |
 | `theme` | `QRScannerTheme` | — | Colores personalizados (ver Tematización) |
 | `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Idioma de los textos de la UI |
 | `messages` | `Partial<Messages>` | — | Override manual de cadenas de texto |
@@ -205,7 +207,7 @@ function CustomScanner() {
 ### Opciones del hook
 
 Acepta las mismas props de comportamiento que `<QRScanner />` (sin las de UI):
-`onScan`, `onError`, `onPermissionChange`, `onCameraChange`, `onReady`, `facingMode`, `deviceId`, `paused`, `scanDelay`, `formats`.
+`onScan`, `onError`, `onPermissionChange`, `onCameraChange`, `onReady`, `facingMode`, `deviceId`, `paused`, `scanDelay`, `formats`, `zoom`, `autofocus`.
 
 ### Valores devueltos
 
@@ -453,6 +455,7 @@ type PermissionStatus = 'prompt' | 'granted' | 'denied' | 'unavailable';
 
 - El loop de detección usa `requestAnimationFrame` para animación fluida (~60 fps).
 - La detección real se limita con `scanDelay` (default 500 ms) para no saturar la CPU.
+- Enfoque en móviles: la cámara se pide hasta 1080p con autoenfoque continuo. Si el navegador elige una lente de enfoque fijo, se prueba otra cámara trasera con autoenfoque, y tras 2,5 s sin lecturas se fuerza un nuevo barrido de enfoque (espaciándolo hasta cada 10 s). `jsQR` recibe el frame reducido a 960 px para que la mayor resolución no ralentice iOS. Todo depende de `getCapabilities()`, así que los navegadores sin soporte simplemente lo omiten.
 - El detector se cachea: `BarcodeDetector` y `jsQR` se instancian una sola vez por sesión.
 - `jsQR` va incluido en el bundle y solo se instancia si el navegador no soporta `BarcodeDetector`.
 

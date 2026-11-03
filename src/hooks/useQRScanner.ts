@@ -8,6 +8,9 @@ import {
   setTorchState,
   findCurrentCamera,
   applyContinuousFocus,
+  applyZoom,
+  nudgeFocus,
+  preferAutofocusCamera,
 } from '../utils/camera';
 import {
   drawQRBorder,
@@ -23,12 +26,19 @@ import type {
   Point,
 } from '../types';
 
+/** Tiempo sin detecciones tras el cual se fuerza un nuevo barrido de enfoque */
+const REFOCUS_BASE_INTERVAL = 2500;
+/** Tope del backoff: evita que la imagen "respire" sin parar si no hay QR delante */
+const REFOCUS_MAX_INTERVAL = 10000;
+
 /**
- * Activa el enfoque continuo. Best effort y sin bloquear: un fallo o un
+ * Enfoque continuo + zoom. Best effort y sin bloquear: un fallo o un
  * applyConstraints lento no deben retrasar ni cortar la cámara.
  */
-function tuneStream(stream: MediaStream): void {
+function tuneStream(stream: MediaStream, zoom: number | 'auto'): void {
   applyContinuousFocus(stream).catch(() => false);
+  // zoom 1 = zoom por defecto del dispositivo: no se toca
+  if (zoom !== 1) applyZoom(stream, zoom).catch(() => null);
 }
 
 export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
@@ -38,6 +48,8 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
     paused = false,
     scanDelay = 500,
     formats = ['qr_code'],
+    zoom = 1,
+    autofocus = true,
   } = options;
 
   // Refs para callbacks — evitan closures obsoletos en el loop RAF
@@ -62,6 +74,10 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const noDetectionCountRef = useRef(0);
   const mountedRef = useRef(true);
   const pausedRef = useRef(paused);
+  const lastFocusNudgeRef = useRef(0);
+  const refocusingRef = useRef(false);
+  const refocusAttemptsRef = useRef(0);
+  const autofocusRef = useRef(autofocus);
   // Se incrementa en cada start/stop/switchCamera: una operación asíncrona que
   // termina con un id antiguo sabe que fue cancelada y libera su stream
   const sessionRef = useRef(0);
@@ -88,6 +104,7 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
 
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+  useEffect(() => { autofocusRef.current = autofocus; }, [autofocus]);
 
   // ─── Loop RAF ────────────────────────────────────────────────────────────────
 
@@ -165,10 +182,29 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
             if (noDetectionCountRef.current > 3) {
               targetPointsRef.current = null;
             }
+            // El autoenfoque puede quedarse fijado en el fondo: forzar un nuevo barrido
+            const stream = streamRef.current;
+            const idle = performance.now() - Math.max(lastScanTimeRef.current, lastFocusNudgeRef.current);
+            const interval = Math.min(
+              REFOCUS_BASE_INTERVAL * 2 ** refocusAttemptsRef.current,
+              REFOCUS_MAX_INTERVAL
+            );
+            if (autofocusRef.current && stream && !refocusingRef.current && idle > interval) {
+              refocusingRef.current = true;
+              refocusAttemptsRef.current++;
+              lastFocusNudgeRef.current = performance.now();
+              nudgeFocus(stream)
+                .catch(() => {})
+                .finally(() => {
+                  refocusingRef.current = false;
+                  lastFocusNudgeRef.current = performance.now();
+                });
+            }
             return;
           }
 
           noDetectionCountRef.current = 0;
+          refocusAttemptsRef.current = 0;
           lastScanTimeRef.current = performance.now();
 
           const det = detections[0];
@@ -213,6 +249,8 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const startLoop = useCallback(() => {
     stopLoop();
     setIsScanning(true);
+    lastFocusNudgeRef.current = performance.now();
+    refocusAttemptsRef.current = 0;
     rafRef.current = requestAnimationFrame(runLoop);
   }, [runLoop, stopLoop]);
 
@@ -222,7 +260,7 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
   const attachStream = useCallback(
     async (stream: MediaStream, isStale: () => boolean): Promise<boolean> => {
       streamRef.current = stream;
-      tuneStream(stream);
+      tuneStream(stream, zoom);
 
       const video = videoRef.current;
       if (video) {
@@ -243,7 +281,7 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
       setTorchOn(false);
       return true;
     },
-    []
+    [zoom]
   );
 
   /** Libera el stream activo y limpia el overlay */
@@ -289,7 +327,11 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
       }
       if (isStale()) return;
 
-      const stream = await requestCamera(facingMode, deviceId);
+      let stream = await requestCamera(facingMode, deviceId);
+      // Sin deviceId explícito, el navegador puede elegir una lente de enfoque fijo
+      if (autofocus && !deviceId && facingMode === 'environment' && !isStale()) {
+        stream = await preferAutofocusCamera(stream);
+      }
       if (isStale()) { stopStream(stream); return; }
 
       setPermissionStatus('granted');
@@ -316,7 +358,7 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
         onErrorRef.current?.({ type: 'camera-error', message: error.message, originalError: err });
       }
     }
-  }, [facingMode, deviceId, formats, attachStream, releaseStream, startLoop]);
+  }, [facingMode, deviceId, formats, autofocus, attachStream, releaseStream, startLoop]);
 
   const stop = useCallback(() => {
     // Cancela cualquier start/switchCamera en curso
@@ -428,6 +470,11 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
     else if (isReady) resume();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused]);
+
+  // Respuesta al prop zoom
+  useEffect(() => {
+    if (streamRef.current) applyZoom(streamRef.current, zoom).catch(() => {});
+  }, [zoom]);
 
   // Pausa automática cuando la pestaña pierde visibilidad
   useEffect(() => {

@@ -86,6 +86,18 @@ export interface QRScannerProps {
   /** Cooldown entre lecturas en ms. Default: 500 */
   scanDelay?: number;
   formats?: string[];
+  /**
+   * Zoom de la cámara si el dispositivo lo soporta. `'auto'` aplica 1.5× en la
+   * cámara trasera para que el usuario no acerque el móvil más allá de la
+   * distancia mínima de enfoque. Recomendado en móviles. Default: 1 (sin zoom)
+   */
+  zoom?: number | 'auto';
+  /**
+   * Estrategias activas de enfoque: si la cámara elegida no tiene autoenfoque
+   * se prueba otra cámara trasera, y si no hay lecturas se fuerza un nuevo
+   * barrido de enfoque. `false` las desactiva. Default: true
+   */
+  autofocus?: boolean;
   theme?: QRScannerTheme;
   locale?: Locale;
   messages?: Partial<Messages>;
@@ -108,6 +120,8 @@ export interface UseQRScannerOptions {
   paused?: boolean;
   scanDelay?: number;
   formats?: string[];
+  zoom?: number | 'auto';
+  autofocus?: boolean;
 }
 
 export interface UseQRScannerReturn {
