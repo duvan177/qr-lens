@@ -12,6 +12,7 @@ import {
   applyZoom,
   rankBackCameras,
   preferAutofocusCamera,
+  resetPreferredCamera,
 } from '../src/utils/camera';
 
 function makeTrack(overrides: Partial<MediaStreamTrack> = {}): MediaStreamTrack {
@@ -32,6 +33,7 @@ function makeStream(tracks: MediaStreamTrack[]): MediaStream {
 }
 
 afterEach(() => {
+  resetPreferredCamera();
   vi.restoreAllMocks();
   // limpia mediaDevices entre tests
   // @ts-expect-error reset de mock
@@ -56,6 +58,7 @@ describe('requestCamera', () => {
         facingMode: { ideal: 'user' },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
+        frameRate: { ideal: 30 },
         focusMode: { ideal: 'continuous' },
       },
       audio: false,
@@ -75,8 +78,25 @@ describe('requestCamera', () => {
         deviceId: { exact: 'cam-123' },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
+        frameRate: { ideal: 30 },
         focusMode: { ideal: 'continuous' },
       },
+      audio: false,
+    });
+  });
+});
+
+describe('requestCamera — resolution', () => {
+  it("'default' no pide resolución y deja elegir al navegador", async () => {
+    const getUserMedia = vi.fn(() => Promise.resolve(makeStream([makeTrack()])));
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia },
+    });
+
+    await requestCamera('environment', undefined, 'default');
+    expect(getUserMedia).toHaveBeenCalledWith({
+      video: { facingMode: { ideal: 'environment' }, focusMode: { ideal: 'continuous' } },
       audio: false,
     });
   });
@@ -171,8 +191,57 @@ describe('setTorchState — merge de constraints', () => {
     });
     await setTorchState(makeStream([track]), true);
     expect(applyConstraints).toHaveBeenCalledWith({
-      advanced: [{ zoom: 1.5, focusMode: 'continuous', torch: true }],
+      advanced: [{ torch: true }, { zoom: 1.5 }, { focusMode: 'continuous' }],
     });
+  });
+
+  it('la constraint nueva va primero y reemplaza a la anterior del mismo tipo', async () => {
+    const applyConstraints = vi.fn(() => Promise.resolve());
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getConstraints: vi.fn(() => ({ advanced: [{ focusMode: 'continuous' }, { torch: true }] })) as never,
+    });
+    await setTorchState(makeStream([track]), false);
+    expect(applyConstraints).toHaveBeenCalledWith({
+      advanced: [{ torch: false }, { focusMode: 'continuous' }],
+    });
+  });
+
+  it('conserva el set básico sin mezclarlo con constraints de imagen', async () => {
+    const applyConstraints = vi.fn(() => Promise.resolve());
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getConstraints: vi.fn(() => ({ width: 1920, focusMode: { ideal: 'continuous' } })) as never,
+    });
+    await setTorchState(makeStream([track]), true);
+    expect(applyConstraints).toHaveBeenCalledWith({ width: 1920, advanced: [{ torch: true }] });
+  });
+
+  it('dos escrituras simultáneas no se pisan', async () => {
+    let constraints: MediaTrackConstraints = {};
+    const applyConstraints = vi.fn((c: MediaTrackConstraints) =>
+      new Promise<void>((resolve) => setTimeout(() => { constraints = c; resolve(); }, 1))
+    );
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getConstraints: vi.fn(() => constraints) as never,
+      getCapabilities: vi.fn(() => ({ focusMode: ['continuous'], zoom: { min: 1, max: 4 } })) as never,
+    });
+    const stream = makeStream([track]);
+
+    await Promise.all([applyContinuousFocus(stream), applyZoom(stream, 2)]);
+    expect(constraints).toEqual({ advanced: [{ zoom: 2 }, { focusMode: 'continuous' }] });
+  });
+
+  it('una escritura fallida no bloquea las siguientes', async () => {
+    const applyConstraints = vi.fn()
+      .mockRejectedValueOnce(new Error('fallo'))
+      .mockResolvedValueOnce(undefined);
+    const track = makeTrack({ applyConstraints: applyConstraints as never });
+    const stream = makeStream([track]);
+
+    await expect(setTorchState(stream, true)).rejects.toThrow('fallo');
+    await expect(setTorchState(stream, false)).resolves.toBeUndefined();
   });
 });
 
@@ -221,6 +290,25 @@ describe('nudgeFocus', () => {
     ]);
   });
 
+  it('sin single-shot pasa por manual para reiniciar el enfoque', async () => {
+    const applyConstraints = vi.fn(() => Promise.resolve());
+    const track = makeTrack({
+      applyConstraints: applyConstraints as never,
+      getCapabilities: vi.fn(() => ({ focusMode: ['continuous', 'manual'] })) as never,
+    });
+    await nudgeFocus(makeStream([track]), 0);
+    expect(applyConstraints.mock.calls.map((c) => (c as unknown[])[0])).toEqual([
+      { advanced: [{ focusMode: 'manual' }] },
+      { advanced: [{ focusMode: 'continuous' }] },
+    ]);
+  });
+
+  it('no fija manual si no puede volver a continuous', async () => {
+    const track = makeTrack({ getCapabilities: vi.fn(() => ({ focusMode: ['manual'] })) as never });
+    await nudgeFocus(makeStream([track]), 0);
+    expect(track.applyConstraints).not.toHaveBeenCalled();
+  });
+
   it('no hace nada sin focusMode', async () => {
     const track = makeTrack();
     await nudgeFocus(makeStream([track]), 0);
@@ -247,6 +335,11 @@ describe('applyZoom', () => {
 
   it('limita al máximo del dispositivo', async () => {
     const { track } = zoomTrack({ zoom: { min: 1, max: 1.2 } });
+    await expect(applyZoom(makeStream([track]), 4)).resolves.toBe(1.2);
+  });
+
+  it('ajustar al step no supera el máximo', async () => {
+    const { track } = zoomTrack({ zoom: { min: 1, max: 1.2, step: 0.3 } });
     await expect(applyZoom(makeStream([track]), 4)).resolves.toBe(1.2);
   });
 
@@ -341,35 +434,84 @@ describe('preferAutofocusCamera', () => {
   });
 });
 
-describe('preferAutofocusCamera — fallback', () => {
-  it('deja elegir al navegador si la cámara original ya no se puede abrir', async () => {
-    const original = makeStream([
+describe('preferAutofocusCamera — fallos y memoria', () => {
+  const fixedStream = () =>
+    makeStream([
       makeTrack({
         getCapabilities: vi.fn(() => ({ focusMode: ['manual'] })) as never,
         getSettings: vi.fn(() => ({ deviceId: 'fixed' })) as never,
       }),
     ]);
-    const fallback = makeStream([makeTrack()]);
-    const getUserMedia = vi.fn()
-      .mockRejectedValueOnce(Object.assign(new Error('busy'), { name: 'NotReadableError' })) // candidata
-      .mockRejectedValueOnce(Object.assign(new Error('gone'), { name: 'NotFoundError' })) // original
-      .mockResolvedValueOnce(fallback);
+  const goodStream = () =>
+    makeStream([makeTrack({ getCapabilities: vi.fn(() => ({ focusMode: ['continuous'] })) as never })]);
+  const devices = [
+    { kind: 'videoinput', deviceId: 'fixed', label: 'camera2 2, facing back' },
+    { kind: 'videoinput', deviceId: 'main', label: 'camera2 0, facing back' },
+  ];
+  const mockDevices = (getUserMedia: unknown, enumerateDevices: unknown = () => Promise.resolve(devices)) =>
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: {
-        getUserMedia,
-        enumerateDevices: vi.fn(() =>
-          Promise.resolve([
-            { kind: 'videoinput', deviceId: 'fixed', label: 'camera2 2, facing back' },
-            { kind: 'videoinput', deviceId: 'main', label: 'camera2 0, facing back' },
-          ])
-        ),
-      },
+      value: { getUserMedia, enumerateDevices },
     });
+  const named = (name: string) => Object.assign(new Error(name), { name });
 
-    await expect(preferAutofocusCamera(original)).resolves.toBe(fallback);
+  it('deja elegir al navegador si la cámara original ya no se puede abrir', async () => {
+    const fallback = makeStream([makeTrack()]);
+    const getUserMedia = vi.fn()
+      .mockRejectedValueOnce(named('OverconstrainedError')) // candidata
+      .mockRejectedValueOnce(named('NotFoundError')) // original
+      .mockResolvedValueOnce(fallback);
+    mockDevices(getUserMedia);
+
+    await expect(preferAutofocusCamera(fixedStream(), { retryMs: 0 })).resolves.toBe(fallback);
     const last = getUserMedia.mock.calls[2][0] as { video: MediaTrackConstraints };
     expect(last.video.deviceId).toBeUndefined();
     expect(last.video.facingMode).toEqual({ ideal: 'environment' });
+  });
+
+  it('reintenta si la cámara aún no se liberó', async () => {
+    const good = goodStream();
+    const getUserMedia = vi.fn()
+      .mockRejectedValueOnce(named('NotReadableError'))
+      .mockResolvedValueOnce(good);
+    mockDevices(getUserMedia);
+
+    await expect(preferAutofocusCamera(fixedStream(), { retryMs: 0 })).resolves.toBe(good);
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    const retry = getUserMedia.mock.calls[1][0] as { video: MediaTrackConstraints };
+    expect(retry.video.deviceId).toEqual({ exact: 'main' });
+  });
+
+  it('conserva el stream si enumerateDevices falla', async () => {
+    const stream = fixedStream();
+    mockDevices(vi.fn(), () => Promise.reject(new Error('fallo')));
+
+    await expect(preferAutofocusCamera(stream)).resolves.toBe(stream);
+    expect(stream.getTracks()[0].stop).not.toHaveBeenCalled();
+  });
+
+  it('no repite la búsqueda si ninguna cámara era mejor', async () => {
+    const getUserMedia = vi.fn(() => Promise.resolve(fixedStream()));
+    mockDevices(getUserMedia);
+
+    await preferAutofocusCamera(fixedStream(), { retryMs: 0 });
+    getUserMedia.mockClear();
+    const second = fixedStream();
+    await expect(preferAutofocusCamera(second, { retryMs: 0 })).resolves.toBe(second);
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it('recuerda la cámara con autoenfoque y va directo a ella', async () => {
+    mockDevices(vi.fn(() => Promise.resolve(goodStream())));
+    await preferAutofocusCamera(fixedStream(), { retryMs: 0 });
+
+    const getUserMedia = vi.fn(() => Promise.resolve(goodStream()));
+    const many = [...devices, { kind: 'videoinput', deviceId: 'other', label: 'camera2 3, facing back' }];
+    mockDevices(getUserMedia, () => Promise.resolve(many));
+    await preferAutofocusCamera(fixedStream(), { retryMs: 0 });
+
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    const call = (getUserMedia.mock.calls as unknown[][])[0][0] as { video: MediaTrackConstraints };
+    expect(call.video.deviceId).toEqual({ exact: 'main' });
   });
 });

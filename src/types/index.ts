@@ -63,6 +63,12 @@ export interface Messages {
   error: string;
 }
 
+/**
+ * `'high'` pide hasta 1920×1080 y `'default'` deja elegir al navegador, como en
+ * 0.1.x (a menudo 640×480). El cambio de resolución puede cambiar el encuadre.
+ */
+export type CameraResolution = 'high' | 'default';
+
 export interface QRScannerHandle {
   start: () => Promise<void>;
   stop: () => void;
@@ -98,6 +104,8 @@ export interface QRScannerProps {
    * barrido de enfoque. `false` las desactiva. Default: true
    */
   autofocus?: boolean;
+  /** Resolución pedida a la cámara. Default: 'high' */
+  resolution?: CameraResolution;
   theme?: QRScannerTheme;
   locale?: Locale;
   messages?: Partial<Messages>;
@@ -122,6 +130,7 @@ export interface UseQRScannerOptions {
   formats?: string[];
   zoom?: number | 'auto';
   autofocus?: boolean;
+  resolution?: CameraResolution;
 }
 
 export interface UseQRScannerReturn {

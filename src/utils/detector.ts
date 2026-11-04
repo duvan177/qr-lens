@@ -17,8 +17,8 @@ let _detectorPromise: Promise<DetectFn> | null = null;
 /**
  * Lado máximo del frame que se pasa a jsQR. jsQR corre en el hilo principal:
  * a 1080p cada lectura procesa ~7× más píxeles que a 640×480 y en móviles
- * (Safari iOS siempre usa este fallback) provoca tirones. 960 px mantiene el
- * coste cerca del de antes y sigue aprovechando la imagen más nítida.
+ * (Safari iOS siempre usa este fallback) provoca tirones. A 960×540 el coste
+ * es ~1,7× el de 640×480, a cambio de una imagen más nítida.
  */
 export const JSQR_MAX_DIMENSION = 960;
 

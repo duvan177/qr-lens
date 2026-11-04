@@ -209,6 +209,7 @@ export const QRScanner = forwardRef<QRScannerHandle, QRScannerProps>(
       formats = ['qr_code'],
       zoom = 1,
       autofocus = true,
+      resolution = 'high',
       theme = {},
       locale = 'en',
       messages: messageOverrides,
@@ -248,6 +249,7 @@ export const QRScanner = forwardRef<QRScannerHandle, QRScannerProps>(
       formats,
       zoom,
       autofocus,
+      resolution,
     });
 
     useImperativeHandle(
