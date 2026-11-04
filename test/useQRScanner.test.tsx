@@ -3,6 +3,7 @@ import { StrictMode, type ReactNode } from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useQRScanner } from '../src/hooks/useQRScanner';
 import { resetDetector } from '../src/utils/detector';
+import { resetPreferredCamera } from '../src/utils/camera';
 
 type FakeTrack = { stop: ReturnType<typeof vi.fn>; deviceId: string };
 
@@ -44,6 +45,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resetDetector();
+  resetPreferredCamera();
   // @ts-expect-error reset de mock
   delete (navigator as { mediaDevices?: unknown }).mediaDevices;
 });
@@ -83,6 +85,33 @@ describe('useQRScanner — ciclo de vida del stream', () => {
     await act(() => result.current.start());
     expect(tracks).toHaveLength(2);
     expect(live()).toHaveLength(1);
+  });
+
+  it('si start() falla al reiniciar, libera la cámara y deja de estar listo', async () => {
+    const onError = vi.fn();
+    const { result } = renderHook(() => useQRScanner({ onScan: vi.fn(), onError }));
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+
+    getUserMedia.mockImplementationOnce(() =>
+      Promise.reject(Object.assign(new Error('busy'), { name: 'NotReadableError' }))
+    );
+    await act(() => result.current.start());
+
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'camera-error' }));
+    expect(result.current.isReady).toBe(false);
+    expect(result.current.isScanning).toBe(false);
+    expect(live()).toHaveLength(0);
+  });
+
+  it('si start() falla al arrancar, sigue notificando el permiso denegado', async () => {
+    getUserMedia.mockImplementationOnce(() =>
+      Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' }))
+    );
+    const onError = vi.fn();
+    const { result } = renderHook(() => useQRScanner({ onScan: vi.fn(), onError }));
+
+    await waitFor(() => expect(result.current.permissionStatus).toBe('denied'));
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'permission-denied' }));
   });
 
   it('si switchCamera falla vuelve a la cámara anterior', async () => {

@@ -14,6 +14,14 @@ export type DetectFn = (video: HTMLVideoElement) => Promise<RawDetection[]>;
 let _detector: DetectFn | null = null;
 let _detectorPromise: Promise<DetectFn> | null = null;
 
+/**
+ * Lado máximo del frame que se pasa a jsQR. jsQR corre en el hilo principal:
+ * a 1080p cada lectura procesa ~7× más píxeles que a 640×480 y en móviles
+ * (Safari iOS siempre usa este fallback) provoca tirones. A 960×540 el coste
+ * es ~1,7× el de 640×480, a cambio de una imagen más nítida.
+ */
+export const JSQR_MAX_DIMENSION = 960;
+
 // Canvas privado para jsQR; no contamina el canvas de overlay
 let _jsqrCanvas: HTMLCanvasElement | null = null;
 
@@ -60,13 +68,17 @@ async function buildNativeDetector(formats: string[]): Promise<DetectFn | null> 
 
 function buildJsQRDetector(): DetectFn {
   return async (video: HTMLVideoElement): Promise<RawDetection[]> => {
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    if (!w || !h) return [];
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh) return [];
+
+    const scale = Math.min(1, JSQR_MAX_DIMENSION / Math.max(vw, vh));
+    const w = Math.round(vw * scale);
+    const h = Math.round(vh * scale);
 
     const canvas = getJsQRCanvas();
-    canvas.width = w;
-    canvas.height = h;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return [];
@@ -79,7 +91,9 @@ function buildJsQRDetector(): DetectFn {
 
     if (!result) return [];
 
+    // Las esquinas vuelven a coordenadas del frame de vídeo original
     const loc = result.location;
+    const toVideo = (p: Point): Point => ({ x: p.x / scale, y: p.y / scale });
     return [
       {
         value: result.data,
@@ -89,7 +103,7 @@ function buildJsQRDetector(): DetectFn {
           loc.topRightCorner,
           loc.bottomRightCorner,
           loc.bottomLeftCorner,
-        ],
+        ].map(toVideo),
       },
     ];
   };

@@ -69,6 +69,9 @@ export default function Page() {
 | `paused` | `boolean` | `false` | Pause/resume scanning |
 | `scanDelay` | `number` | `500` | Cooldown between reads (ms) |
 | `formats` | `string[]` | `['qr_code']` | Formats to detect (see formats table) |
+| `zoom` | `number \| 'auto'` | `1` | Camera zoom when supported. `'auto'` applies 1.5× on the back camera so users don't hold the phone closer than its minimum focus distance. Recommended on mobile |
+| `autofocus` | `boolean` | `true` | Active focus strategies: switch to a back camera with autofocus if the chosen one has fixed focus, and force a new focus sweep when nothing is read. `false` disables them |
+| `resolution` | `'high' \| 'default'` | `'high'` | `'high'` requests up to 1920×1080; `'default'` lets the browser choose, as in 0.1.x. Changing it can change the framing |
 | `theme` | `QRScannerTheme` | — | Custom colors (see Theming) |
 | `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Language of the UI strings |
 | `messages` | `Partial<Messages>` | — | Manual override of text strings |
@@ -205,7 +208,7 @@ function CustomScanner() {
 ### Hook options
 
 Accepts the same behavioral props as `<QRScanner />` (without the UI ones):
-`onScan`, `onError`, `onPermissionChange`, `onCameraChange`, `onReady`, `facingMode`, `deviceId`, `paused`, `scanDelay`, `formats`.
+`onScan`, `onError`, `onPermissionChange`, `onCameraChange`, `onReady`, `facingMode`, `deviceId`, `paused`, `scanDelay`, `formats`, `zoom`, `autofocus`, `resolution`.
 
 ### Returned values
 
@@ -453,6 +456,7 @@ type PermissionStatus = 'prompt' | 'granted' | 'denied' | 'unavailable';
 
 - The detection loop uses `requestAnimationFrame` for smooth animation (~60 fps).
 - Actual detection is throttled with `scanDelay` (default 500 ms) to avoid saturating the CPU.
+- Focus on mobile: the camera is requested at up to 1080p with continuous autofocus. If the browser picks a fixed-focus lens, another back camera with autofocus is tried, and after 2.5 s without a read a new focus sweep is forced (backing off up to every 10 s). `jsQR` receives the frame downscaled to 960 px to limit the cost of the higher resolution on iOS. Everything is capability-driven via `getCapabilities()`, so unsupported browsers simply skip it.
 - The detector is cached: `BarcodeDetector` and `jsQR` are instantiated only once per session.
 - `jsQR` is bundled statically and only instantiated when the browser lacks `BarcodeDetector`.
 
