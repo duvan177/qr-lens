@@ -6,7 +6,7 @@
 
 **🌐 Language:** **English** · [Español](./README.es.md)
 
-📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)** · 🚀 **[Live demo](https://qr-lens-demo.vercel.app)**
+📦 **[npmjs.com/package/qr-lens](https://www.npmjs.com/package/qr-lens)** · 🚀 **[Live demo](https://qr-lens-demo.duvannarvaez177.workers.dev)**
 
 React library for scanning QR codes — lightweight, accessible, and SSR-friendly.
 
