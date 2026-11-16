@@ -50,7 +50,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && node scripts/check-dts.mjs",
     "build:demo": "vite build --config vite.demo.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
