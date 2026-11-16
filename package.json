@@ -1,6 +1,6 @@
 {
   "name": "qr-lens",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "description": "Librería reutilizable de escaneo QR para React — ligera, accesible y compatible con SSR",
   "type": "module",
   "main": "./dist/qr-lens.umd.js",
@@ -50,7 +50,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && node scripts/check-dts.mjs",
     "build:demo": "vite build --config vite.demo.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

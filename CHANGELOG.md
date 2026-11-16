@@ -1,5 +1,17 @@
 # qr-lens
 
+## 0.1.7
+
+### Patch Changes
+
+- 1389095: Actualiza el enlace de la demo en vivo del README (ahora en Cloudflare Workers) para que la página de npm apunte a la URL vigente. Sin cambios de API ni de runtime.
+
+## 0.1.6
+
+### Patch Changes
+
+- a7ab408: Corrige la resolución de tipos bajo `moduleResolution: "node16"` / `"nodenext"`. El build ejecutaba `tsc` después de `vite build` y sobrescribía el `dist/index.d.ts` autocontenido con declaraciones de imports relativos sin extensión, por lo que todos los exports resolvían a `any` (TS7006 / TS2834). Ahora se publica un único `index.d.ts` empaquetado, y el build falla si reaparecen imports relativos. Sin cambios de API ni de runtime.
+
 ## 0.1.5
 
 ### Patch Changes
