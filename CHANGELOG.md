@@ -1,5 +1,11 @@
 # qr-lens
 
+## 0.1.7
+
+### Patch Changes
+
+- 1389095: Actualiza el enlace de la demo en vivo del README (ahora en Cloudflare Workers) para que la página de npm apunte a la URL vigente. Sin cambios de API ni de runtime.
+
 ## 0.1.6
 
 ### Patch Changes
