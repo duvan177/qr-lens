@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { useState, useRef } from 'react';
 import { QRScanner } from '../src';
 import type { ScanResult, QRScannerHandle } from '../src';
+import { CameraDiagnostics } from './CameraDiagnostics';
 
 type Locale = 'es' | 'en' | 'pt';
 
@@ -9,6 +10,8 @@ function App() {
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [locale, setLocale] = useState<Locale>('es');
   const [paused, setPaused] = useState(false);
+  const [zoom, setZoom] = useState<number | 'auto'>(1);
+  const [autofocus, setAutofocus] = useState(true);
   const ref = useRef<QRScannerHandle>(null);
 
   const handleScan = (_value: string, result: ScanResult) => {
@@ -29,6 +32,8 @@ function App() {
         onError={(e) => console.error('[qr-lens]', e)}
         locale={locale}
         paused={paused}
+        zoom={zoom}
+        autofocus={autofocus}
         scanDelay={600}
         showCameraSwitch
         showTorch
@@ -61,7 +66,30 @@ function App() {
             {l.toUpperCase()}
           </button>
         ))}
+
+        <div style={divider} />
+
+        {(['auto', 1, 2] as const).map((z) => (
+          <button
+            key={z}
+            onClick={() => setZoom(z)}
+            style={zoom === z ? { ...btn, ...btnActive } : btn}
+          >
+            {z === 'auto' ? 'Zoom auto' : `${z}×`}
+          </button>
+        ))}
+
+        <div style={divider} />
+
+        <button
+          onClick={() => setAutofocus((a) => !a)}
+          style={autofocus ? { ...btn, ...btnActive } : btn}
+        >
+          Autofocus {autofocus ? 'on' : 'off'}
+        </button>
       </div>
+
+      <CameraDiagnostics />
 
       {/* Historial */}
       {scans.length > 0 && (

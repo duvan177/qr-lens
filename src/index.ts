@@ -12,6 +12,7 @@ export type {
   QRScannerTheme,
   Locale,
   Messages,
+  CameraResolution,
   QRScannerHandle,
   QRScannerProps,
   UseQRScannerOptions,
