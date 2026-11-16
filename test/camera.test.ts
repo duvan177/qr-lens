@@ -328,9 +328,23 @@ describe('applyZoom', () => {
   };
 
   it("'auto' aplica 1.5× en la cámara trasera", async () => {
-    const { track, applyConstraints } = zoomTrack({ zoom: { min: 1, max: 8, step: 0.1 } });
+    const { track, applyConstraints } = zoomTrack(
+      { zoom: { min: 1, max: 8, step: 0.1 } },
+      { facingMode: 'environment' }
+    );
     await expect(applyZoom(makeStream([track]), 'auto')).resolves.toBeCloseTo(1.5);
     expect(applyConstraints).toHaveBeenCalled();
+  });
+
+  it("'auto' no aplica zoom en una webcam que no reporta facingMode", async () => {
+    const { track, applyConstraints } = zoomTrack({ zoom: { min: 1, max: 8 } }, {});
+    await expect(applyZoom(makeStream([track]), 'auto')).resolves.toBeNull();
+    expect(applyConstraints).not.toHaveBeenCalled();
+  });
+
+  it('un zoom numérico sí se aplica sin facingMode', async () => {
+    const { track } = zoomTrack({ zoom: { min: 1, max: 8 } }, {});
+    await expect(applyZoom(makeStream([track]), 2)).resolves.toBe(2);
   });
 
   it('limita al máximo del dispositivo', async () => {
@@ -513,5 +527,74 @@ describe('preferAutofocusCamera — fallos y memoria', () => {
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     const call = (getUserMedia.mock.calls as unknown[][])[0][0] as { video: MediaTrackConstraints };
     expect(call.video.deviceId).toEqual({ exact: 'main' });
+  });
+
+  it('un fallo al abrir una cámara no desactiva la búsqueda el resto de la sesión', async () => {
+    mockDevices(
+      vi.fn()
+        .mockRejectedValueOnce(named('NotFoundError')) // candidata
+        .mockResolvedValueOnce(fixedStream()) // original reabierta
+    );
+    await preferAutofocusCamera(fixedStream(), { retryMs: 0 });
+
+    const getUserMedia = vi.fn(() => Promise.resolve(goodStream()));
+    mockDevices(getUserMedia);
+    const good = await preferAutofocusCamera(fixedStream(), { retryMs: 0 });
+    expect(getUserMedia).toHaveBeenCalled();
+    expect(supportsContinuousFocus(good)).toBe(true);
+  });
+
+  it('último recurso: reabre con resolución por defecto si todo lo demás falla', async () => {
+    const fallback = makeStream([makeTrack()]);
+    const getUserMedia = vi.fn()
+      .mockRejectedValueOnce(named('NotFoundError')) // candidata
+      .mockRejectedValueOnce(named('OverconstrainedError')) // original
+      .mockRejectedValueOnce(named('OverconstrainedError')) // navegador, 1080p
+      .mockResolvedValueOnce(fallback);
+    mockDevices(getUserMedia);
+
+    await expect(preferAutofocusCamera(fixedStream(), { retryMs: 0 })).resolves.toBe(fallback);
+    const last = getUserMedia.mock.calls[3][0] as { video: MediaTrackConstraints };
+    expect(last.video.width).toBeUndefined();
+    expect(last.video.deviceId).toBeUndefined();
+  });
+
+  it('lanza el último error si no se puede reabrir ninguna cámara', async () => {
+    mockDevices(vi.fn(() => Promise.reject(named('NotFoundError'))));
+    await expect(preferAutofocusCamera(fixedStream(), { retryMs: 0 })).rejects.toMatchObject({
+      name: 'NotFoundError',
+    });
+  });
+
+  it('con la sesión ya obsoleta no toca el stream', async () => {
+    const stream = fixedStream();
+    const getUserMedia = vi.fn();
+    mockDevices(getUserMedia);
+
+    await expect(preferAutofocusCamera(stream, { isStale: () => true })).resolves.toBe(stream);
+    expect(stream.getTracks()[0].stop).not.toHaveBeenCalled();
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it('si la sesión queda obsoleta a mitad de la búsqueda, libera lo abierto y no sigue', async () => {
+    let stale = false;
+    const other = fixedStream();
+    const getUserMedia = vi.fn(() => {
+      stale = true; // otro start() reemplazó a este mientras se abría la cámara
+      return Promise.resolve(other);
+    });
+    const many = [...devices, { kind: 'videoinput', deviceId: 'other', label: 'camera2 3, facing back' }];
+    mockDevices(getUserMedia, () => Promise.resolve(many));
+
+    await expect(
+      preferAutofocusCamera(fixedStream(), { retryMs: 0, isStale: () => stale })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(other.getTracks()[0].stop).toHaveBeenCalled();
+
+    // Una búsqueda cancelada no se recuerda como "no hay mejor cámara"
+    getUserMedia.mockClear();
+    await preferAutofocusCamera(fixedStream(), { retryMs: 0 }).catch(() => {});
+    expect(getUserMedia).toHaveBeenCalled();
   });
 });

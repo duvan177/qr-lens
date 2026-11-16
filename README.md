@@ -69,9 +69,9 @@ export default function Page() {
 | `paused` | `boolean` | `false` | Pause/resume scanning |
 | `scanDelay` | `number` | `500` | Cooldown between reads (ms) |
 | `formats` | `string[]` | `['qr_code']` | Formats to detect (see formats table) |
-| `zoom` | `number \| 'auto'` | `1` | Camera zoom when supported. `'auto'` applies 1.5× on the back camera so users don't hold the phone closer than its minimum focus distance. Recommended on mobile |
-| `autofocus` | `boolean` | `true` | Active focus strategies: switch to a back camera with autofocus if the chosen one has fixed focus, and force a new focus sweep when nothing is read. `false` disables them |
-| `resolution` | `'high' \| 'default'` | `'high'` | `'high'` requests up to 1920×1080; `'default'` lets the browser choose, as in 0.1.x. Changing it can change the framing |
+| `zoom` | `number \| 'auto'` | `1` | Camera zoom when supported. `'auto'` applies 1.5× only on cameras the browser reports as back-facing (not on laptop webcams), so users don't hold the phone closer than its minimum focus distance. Recommended on mobile |
+| `autofocus` | `boolean` | `true` | Active focus strategies: switch to a back camera with autofocus if the chosen one has fixed focus, and force a new focus sweep when nothing is read. The camera switch is decided when the camera starts; toggling the prop later only affects the focus sweeps. `false` disables them |
+| `resolution` | `'high' \| 'default'` | `'high'` | `'high'` requests up to 1920×1080; `'default'` lets the browser choose, as in 0.1.x. Read when the camera starts: changing it later needs `start()` or a remount. It can change the framing |
 | `theme` | `QRScannerTheme` | — | Custom colors (see Theming) |
 | `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Language of the UI strings |
 | `messages` | `Partial<Messages>` | — | Manual override of text strings |

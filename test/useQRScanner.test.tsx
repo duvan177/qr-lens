@@ -132,3 +132,69 @@ describe('useQRScanner — ciclo de vida del stream', () => {
     expect(live()).toHaveLength(1);
   });
 });
+
+describe('useQRScanner — arranque con callbacks y búsqueda de lente', () => {
+  it('si onPermissionChange lanza, libera la cámara en vez de dejarla encendida', async () => {
+    const onError = vi.fn();
+    const onPermissionChange = vi.fn(() => {
+      throw new Error('callback roto');
+    });
+    renderHook(() => useQRScanner({ onScan: vi.fn(), onError, onPermissionChange }));
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'camera-error' }))
+    );
+    expect(live()).toHaveLength(0);
+  });
+
+  describe('con una cámara de enfoque fijo', () => {
+    const fixedFocusStream = (deviceId: string, modes: string[]) => {
+      const stream = makeStream(deviceId);
+      const track = tracks[tracks.length - 1] as FakeTrack & Record<string, unknown>;
+      track.getCapabilities = () => ({ focusMode: modes });
+      return stream;
+    };
+    const rearCameras = [
+      { kind: 'videoinput', deviceId: 'fixed', label: 'camera2 2, facing back' },
+      { kind: 'videoinput', deviceId: 'main', label: 'camera2 0, facing back' },
+    ];
+    let releaseReopen!: (stream: MediaStream) => void;
+
+    beforeEach(() => {
+      getUserMedia
+        .mockReset()
+        .mockImplementationOnce(() => Promise.resolve(fixedFocusStream('fixed', ['manual'])))
+        .mockImplementationOnce(
+          () => new Promise<MediaStream>((resolve) => { releaseReopen = resolve; })
+        );
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia, enumerateDevices: () => Promise.resolve(rearCameras) },
+      });
+    });
+
+    it('avisa del permiso concedido antes de terminar la búsqueda de lente', async () => {
+      const onPermissionChange = vi.fn();
+      const { result } = renderHook(() => useQRScanner({ onScan: vi.fn(), onPermissionChange }));
+
+      await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
+      expect(onPermissionChange).toHaveBeenCalledWith('granted');
+      expect(result.current.permissionStatus).toBe('granted');
+      expect(result.current.isReady).toBe(false);
+
+      await act(async () => releaseReopen(fixedFocusStream('main', ['continuous'])));
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+    });
+
+    it('una búsqueda obsoleta libera la cámara y no sigue abriendo otras', async () => {
+      const { unmount } = renderHook(() => useQRScanner({ onScan: vi.fn() }));
+      await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
+
+      unmount();
+      await act(async () => releaseReopen(fixedFocusStream('main', ['continuous'])));
+
+      expect(live()).toHaveLength(0);
+      expect(getUserMedia).toHaveBeenCalledTimes(2);
+    });
+  });
+});

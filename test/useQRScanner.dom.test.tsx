@@ -161,6 +161,34 @@ describe('useQRScanner — re-enfoque', () => {
     expect(singleShots()).toBe(3);
   });
 
+  it('reanudar tras una pausa no fuerza un barrido inmediato', async () => {
+    await startScanner();
+    await advance(1000);
+    act(() => scanner.pause());
+    await advance(30000);
+    expect(singleShots()).toBe(0);
+
+    act(() => scanner.resume());
+    await advance(1500);
+    expect(singleShots()).toBe(0);
+    await advance(1500);
+    expect(singleShots()).toBe(1);
+  });
+
+  it('volver a mostrar la pestaña tampoco fuerza un barrido inmediato', async () => {
+    await startScanner();
+    await advance(1000);
+    const hidden = vi.spyOn(document, 'hidden', 'get');
+    hidden.mockReturnValue(true);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    await advance(30000);
+
+    hidden.mockReturnValue(false);
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    await advance(1500);
+    expect(singleShots()).toBe(0);
+  });
+
   it('autofocus={false} no fuerza barridos de enfoque', async () => {
     await startScanner({ autofocus: false });
     await advance(30000);

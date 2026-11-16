@@ -69,9 +69,9 @@ export default function Page() {
 | `paused` | `boolean` | `false` | Pausar/reanudar el escaneo |
 | `scanDelay` | `number` | `500` | Cooldown entre lecturas (ms) |
 | `formats` | `string[]` | `['qr_code']` | Formatos a detectar (ver tabla de formatos) |
-| `zoom` | `number \| 'auto'` | `1` | Zoom de la cámara si está soportado. `'auto'` aplica 1.5× en la cámara trasera para que el usuario no acerque el móvil más allá de su distancia mínima de enfoque. Recomendado en móviles |
-| `autofocus` | `boolean` | `true` | Estrategias activas de enfoque: cambiar a una cámara trasera con autoenfoque si la elegida es de enfoque fijo, y forzar un nuevo barrido de enfoque si no hay lecturas. `false` las desactiva |
-| `resolution` | `'high' \| 'default'` | `'high'` | `'high'` pide hasta 1920×1080; `'default'` deja elegir al navegador, como en 0.1.x. Cambiarla puede cambiar el encuadre |
+| `zoom` | `number \| 'auto'` | `1` | Zoom de la cámara si está soportado. `'auto'` aplica 1.5× solo en cámaras que el navegador reporta como traseras (no en webcams de portátil) para que el usuario no acerque el móvil más allá de su distancia mínima de enfoque. Recomendado en móviles |
+| `autofocus` | `boolean` | `true` | Estrategias activas de enfoque: cambiar a una cámara trasera con autoenfoque si la elegida es de enfoque fijo, y forzar un nuevo barrido de enfoque si no hay lecturas. El cambio de cámara se decide al arrancarla; activar o desactivar el prop después solo afecta a los barridos de enfoque. `false` las desactiva |
+| `resolution` | `'high' \| 'default'` | `'high'` | `'high'` pide hasta 1920×1080; `'default'` deja elegir al navegador, como en 0.1.x. Se lee al arrancar la cámara: cambiarla después requiere `start()` o remontar el componente. Puede cambiar el encuadre |
 | `theme` | `QRScannerTheme` | — | Colores personalizados (ver Tematización) |
 | `locale` | `'es' \| 'en' \| 'pt'` | `'en'` | Idioma de los textos de la UI |
 | `messages` | `Partial<Messages>` | — | Override manual de cadenas de texto |

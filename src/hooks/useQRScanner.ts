@@ -311,6 +311,9 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
     // start() sobre un escáner activo reinicia la cámara en vez de abrir una segunda
     releaseStream();
     let cameraAcquired = false;
+    // Stream obtenido pero aún no entregado a attachStream: si algo lanza antes
+    // (un callback del usuario, por ejemplo) releaseStream() no lo vería
+    let pending: MediaStream | null = null;
 
     try {
       // Pre-carga el detector antes de iniciar la cámara para evitar lag.
@@ -329,23 +332,32 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
       if (isStale()) return;
 
       let stream = await requestCamera(facingMode, deviceId, resolution);
-      // Sin deviceId explícito, el navegador puede elegir una lente de enfoque fijo
-      if (autofocus && !deviceId && facingMode === 'environment' && !isStale()) {
-        stream = await preferAutofocusCamera(stream, { resolution });
-      }
+      pending = stream;
       if (isStale()) { stopStream(stream); return; }
       cameraAcquired = true;
 
+      // El permiso ya está concedido: se avisa antes de la búsqueda de lente,
+      // que puede tardar segundos con la imagen en blanco
       setPermissionStatus('granted');
       onPermissionChangeRef.current?.('granted');
 
-      if (!(await attachStream(stream, isStale))) return;
+      // Sin deviceId explícito, el navegador puede elegir una lente de enfoque fijo
+      if (autofocus && !deviceId && facingMode === 'environment') {
+        stream = await preferAutofocusCamera(stream, { resolution, isStale });
+        pending = stream;
+      }
+      if (isStale()) { stopStream(stream); return; }
+
+      const attached = await attachStream(stream, isStale);
+      pending = null;
+      if (!attached) return;
 
       activeFacingRef.current = facingMode;
       setIsReady(true);
       onReadyRef.current?.();
       startLoop();
     } catch (err: unknown) {
+      stopStream(pending);
       if (isStale()) return;
       const error = err as Error;
 
@@ -389,10 +401,17 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
     setIsScanning(false);
   }, []);
 
+  /** Reinicia la espera del re-enfoque: el tiempo en pausa no cuenta como lecturas fallidas */
+  const resetRefocus = useCallback(() => {
+    lastFocusNudgeRef.current = performance.now();
+    refocusAttemptsRef.current = 0;
+  }, []);
+
   const resume = useCallback(() => {
+    resetRefocus();
     pausedRef.current = false;
     setIsScanning(true);
-  }, []);
+  }, [resetRefocus]);
 
   const switchCamera = useCallback(async () => {
     const session = ++sessionRef.current;
@@ -497,12 +516,13 @@ export function useQRScanner(options: UseQRScannerOptions): UseQRScannerReturn {
       if (document.hidden) {
         pausedRef.current = true;
       } else if (!paused) {
+        resetRefocus();
         pausedRef.current = false;
       }
     };
     document.addEventListener('visibilitychange', handle);
     return () => document.removeEventListener('visibilitychange', handle);
-  }, [paused]);
+  }, [paused, resetRefocus]);
 
   return {
     videoRef,

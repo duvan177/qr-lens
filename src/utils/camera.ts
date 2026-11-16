@@ -169,7 +169,9 @@ export async function applyZoom(
   if (!track) return null;
   const range = getCaps(track).zoom;
   if (!range || typeof range.min !== 'number' || typeof range.max !== 'number') return null;
-  if (zoom === 'auto' && track.getSettings?.().facingMode === 'user') return null;
+  // 'auto' es solo para la trasera. Una webcam de portátil no reporta facingMode,
+  // así que hay que exigir 'environment' en vez de descartar solo 'user'
+  if (zoom === 'auto' && track.getSettings?.().facingMode !== 'environment') return null;
 
   const target = zoom === 'auto' ? AUTO_ZOOM : zoom;
   let value = Math.min(Math.max(target, range.min), range.max);
@@ -223,7 +225,12 @@ async function reopenCamera(
  * otras cámaras traseras y devuelve la primera que sí lo tenga. Si ninguna lo
  * tiene, vuelve a abrir la original. Muchos Android no permiten abrir dos
  * cámaras a la vez, por eso se libera cada stream antes de probar el siguiente.
- * El resultado se recuerda durante la sesión para no repetir la búsqueda.
+ * El resultado se recuerda durante la sesión para no repetir la búsqueda,
+ * pero solo si es definitivo: un fallo al abrir una cámara no se recuerda.
+ *
+ * `isStale` permite cancelar la búsqueda cuando otro start()/stop() la dejó
+ * obsoleta. Entonces libera lo que tenía abierto y lanza un AbortError, para no
+ * seguir quitándole la cámara a la sesión vigente.
  */
 export async function preferAutofocusCamera(
   stream: MediaStream,
@@ -231,9 +238,18 @@ export async function preferAutofocusCamera(
     resolution = 'high',
     maxAttempts = 3,
     retryMs = CAMERA_RELEASE_RETRY_MS,
-  }: { resolution?: CameraResolution; maxAttempts?: number; retryMs?: number } = {}
+    isStale,
+  }: {
+    resolution?: CameraResolution;
+    maxAttempts?: number;
+    retryMs?: number;
+    isStale?: () => boolean;
+  } = {}
 ): Promise<MediaStream> {
   if (supportsContinuousFocus(stream) !== false || preferredCameraId === null) return stream;
+  // Aún no se tocó el stream: quien lo llamó sabe que está obsoleto y lo libera
+  if (isStale?.()) return stream;
+  const abort = () => Object.assign(new Error('Camera search cancelled'), { name: 'AbortError' });
 
   const originalId = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
   let cameras: MediaDeviceInfo[];
@@ -251,12 +267,19 @@ export async function preferAutofocusCamera(
   }
 
   stopStream(stream);
+  let openFailed = false;
   for (const cam of candidates) {
+    if (isStale?.()) throw abort();
     let next: MediaStream;
     try {
       next = await reopenCamera(cam.deviceId, resolution, retryMs);
     } catch {
+      openFailed = true;
       continue;
+    }
+    if (isStale?.()) {
+      stopStream(next);
+      throw abort();
     }
     if (supportsContinuousFocus(next)) {
       preferredCameraId = cam.deviceId;
@@ -264,13 +287,35 @@ export async function preferAutofocusCamera(
     }
     stopStream(next);
   }
-  preferredCameraId = null;
-  try {
-    return await reopenCamera(originalId, resolution, retryMs);
-  } catch {
-    // El deviceId original pudo dejar de estar disponible: dejar elegir al navegador
-    return reopenCamera(undefined, resolution, retryMs);
+  // Solo es un resultado definitivo si todas se abrieron y ninguna tenía autoenfoque.
+  // Un fallo al abrir puede ser pasajero (otra pestaña, hardware sin liberar)
+  if (!openFailed) preferredCameraId = null;
+  if (isStale?.()) throw abort();
+
+  // Se liberó la cámara original: hay que devolver alguna, cada intento más permisivo.
+  // El deviceId original pudo dejar de estar disponible, y la resolución pedida
+  // puede ser lo que la rechaza
+  const attempts: Array<[string | undefined, CameraResolution]> = [
+    [originalId, resolution],
+    [undefined, resolution],
+    [undefined, 'default'],
+  ];
+  let lastError: unknown;
+  for (const [id, res] of attempts) {
+    if (isStale?.()) throw abort();
+    try {
+      const reopened = await reopenCamera(id, res, retryMs);
+      if (isStale?.()) {
+        stopStream(reopened);
+        throw abort();
+      }
+      return reopened;
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') throw err;
+      lastError = err;
+    }
   }
+  throw lastError;
 }
 
 /**
