@@ -93,9 +93,12 @@ export interface QRScannerProps {
   scanDelay?: number;
   formats?: string[];
   /**
-   * Zoom de la cámara si el dispositivo lo soporta. `'auto'` aplica 1.5× en la
-   * cámara trasera para que el usuario no acerque el móvil más allá de la
-   * distancia mínima de enfoque. Recomendado en móviles. Default: 1 (sin zoom)
+   * Zoom de la cámara si el dispositivo lo soporta. `'auto'` aplica 1.5× solo en
+   * cámaras traseras (`facingMode: 'environment'`), no en webcams de portátil,
+   * para que el usuario no acerque el móvil más allá de la distancia mínima de
+   * enfoque. Recomendado en móviles. Default: 1 (sin zoom).
+   * Reacciona a cambios en caliente. No llames a `track.applyConstraints()` para
+   * el zoom: reemplaza todas las constraints y pierde resolución y enfoque.
    */
   zoom?: number | 'auto';
   /**
@@ -104,7 +107,10 @@ export interface QRScannerProps {
    * barrido de enfoque. `false` las desactiva. Default: true
    */
   autofocus?: boolean;
-  /** Resolución pedida a la cámara. Default: 'high' */
+  /**
+   * Resolución pedida a la cámara. Default: 'high'. Se lee al arrancar la cámara:
+   * para cambiarla después llama a `start()` o remonta el componente.
+   */
   resolution?: CameraResolution;
   theme?: QRScannerTheme;
   locale?: Locale;
@@ -128,8 +134,15 @@ export interface UseQRScannerOptions {
   paused?: boolean;
   scanDelay?: number;
   formats?: string[];
+  /**
+   * Zoom de la cámara. `'auto'` aplica 1.5× solo en cámaras traseras. Reacciona a
+   * cambios en caliente. No uses `track.applyConstraints()` para el zoom: reemplaza
+   * todas las constraints y pierde resolución y enfoque.
+   */
   zoom?: number | 'auto';
+  /** Cambio a otra cámara trasera con autoenfoque y barridos de enfoque. Default: true */
   autofocus?: boolean;
+  /** Resolución pedida. Se lee al arrancar la cámara: tras cambiarla llama a `start()`. Default: 'high' */
   resolution?: CameraResolution;
 }
 

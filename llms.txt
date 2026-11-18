@@ -1,0 +1,65 @@
+# qr-lens
+
+> React library to scan QR codes with the device camera. Ships a `<QRScanner />`
+> component and a headless `useQRScanner()` hook. Native `BarcodeDetector` with a
+> `jsQR` fallback. Client-side only; SSR-safe to import.
+
+Docs: README.md (English) and README.es.md (Spanish) in this package.
+Types: dist/index.d.ts (props are documented with JSDoc).
+
+## Minimal usage
+
+```tsx
+import { QRScanner } from 'qr-lens';
+
+<QRScanner onScan={(value) => console.log(value)} locale="en" zoom="auto" />;
+```
+
+Headless: render BOTH a `<video ref={videoRef}>` and a `<canvas ref={canvasRef}>`
+from `useQRScanner()`. The detection loop does not run without the canvas.
+
+```tsx
+const { videoRef, canvasRef, isReady, switchCamera, setTorch } = useQRScanner({ onScan });
+return (
+  <div style={{ position: 'relative' }}>
+    <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', objectFit: 'cover' }} />
+    <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
+  </div>
+);
+```
+
+## Rules (read before integrating)
+
+1. Zoom: use the `zoom` prop (`number | 'auto'`). It is applied live. Do NOT call
+   `track.applyConstraints()` yourself for zoom, torch or focus: it REPLACES the whole
+   constraint set and drops the 1080p resolution, frame rate, continuous focus and the
+   chosen device (the stream can fall back to 640x480, changing the aspect ratio).
+   Use `setTorch()` for the torch. Read `track.getCapabilities().zoom` if you need the range.
+2. `'auto'` zoom applies 1.5x only on cameras the browser reports as `facingMode:
+   'environment'`. It does nothing on laptop webcams.
+3. The camera starts once, on mount. `facingMode`, `deviceId`, `resolution` and the
+   autofocus lens switch are read at that moment. After changing them call `start()`
+   (or remount). `zoom` and `paused` do react to changes.
+4. `resolution="high"` (default) requests up to 1080p, which can change the framing
+   (for example 4:3 to 16:9). Use `resolution="default"` to let the browser choose.
+5. Overlay: the canvas is sized automatically from the video element's bounding box
+   every frame. Do not set its width/height. Keep it over the video in the same box
+   (`position: absolute; inset: 0`). Avoid CSS `transform: scale()` on the video, the
+   canvas or their ancestors (the measured box includes transforms and the overlay can
+   be misplaced). Zoom with the `zoom` prop instead.
+6. Callbacks (`onScan`, `onError`, `onReady`, ...) are read through refs: no need to
+   memoize them. `onScan` receives `(value, result)`.
+7. `getUserMedia` needs HTTPS (or `localhost`) and a user permission. Handle
+   `permissionStatus === 'denied'` and `onError` (`ScannerError.type`).
+8. SSR: it is safe to import on the server, but the camera only opens on the client.
+   In Next.js App Router use a Client Component (`'use client'`); in the Pages Router
+   use `dynamic(() => import('qr-lens').then(m => m.QRScanner), { ssr: false })`.
+9. UI strings: `locale` (`'es' | 'en' | 'pt'`) and `messages` belong to
+   `<QRScanner />`. The hook has no `locale` option; use `getMessages(locale)` for text.
+
+## Public API
+
+`QRScanner`, `useQRScanner`, `getMessages`, `registerLocale`, `getDetector`,
+`resetDetector`, and the types `ScanResult`, `ScannerError`, `PermissionStatus`,
+`QRScannerProps`, `UseQRScannerOptions`, `UseQRScannerReturn`, `QRScannerHandle`,
+`QRScannerTheme`, `Locale`, `Messages`, `CameraResolution`, `Point`.
