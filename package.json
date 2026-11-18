@@ -46,7 +46,9 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "README.es.md",
+    "llms.txt"
   ],
   "scripts": {
     "dev": "vite",

@@ -53,6 +53,17 @@ export default function Page() {
 
 ---
 
+## Integrating with an AI assistant
+
+If an AI assistant (or a teammate in a hurry) is wiring `qr-lens` into your app, point it to [`llms.txt`](./llms.txt) (also at `node_modules/qr-lens/llms.txt`). The short version:
+
+- **Zoom:** use the `zoom` prop (`number | 'auto'`). Never call `track.applyConstraints()` yourself: it replaces all constraints and drops the resolution, continuous focus and the chosen camera.
+- **Camera start:** it starts once, on mount. `facingMode`, `deviceId`, `resolution` and the lens switch are read then; call `start()` after changing them. `zoom` and `paused` react live.
+- **Headless hook:** render both the `<video>` and the `<canvas>`; the detection loop needs the canvas. Don't resize the canvas yourself or put CSS `transform: scale()` on the video, canvas or their ancestors.
+- **Requirements:** HTTPS (or `localhost`) and the camera permission. It only opens the camera on the client.
+
+---
+
 ## `<QRScanner />` component
 
 ### Props
@@ -187,7 +198,6 @@ function CustomScanner() {
   } = useQRScanner({
     onScan: (value, result) => console.log(value, result),
     onError: (err) => console.error(err),
-    locale: 'en',
     scanDelay: 500,
   });
 

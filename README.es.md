@@ -53,6 +53,17 @@ export default function Page() {
 
 ---
 
+## Integración con un asistente de IA
+
+Si un asistente de IA (o un compañero con prisa) va a integrar `qr-lens` en tu app, indícale [`llms.txt`](./llms.txt) (también en `node_modules/qr-lens/llms.txt`). Lo esencial:
+
+- **Zoom:** usa la prop `zoom` (`number | 'auto'`). No llames a `track.applyConstraints()` por tu cuenta: reemplaza todas las constraints y pierde la resolución, el enfoque continuo y la cámara elegida.
+- **Arranque de la cámara:** arranca una vez, al montar. `facingMode`, `deviceId`, `resolution` y el cambio de lente se leen en ese momento; llama a `start()` tras cambiarlos. `zoom` y `paused` reaccionan en caliente.
+- **Hook headless:** renderiza el `<video>` y el `<canvas>`; el bucle de detección necesita el canvas. No cambies el tamaño del canvas ni pongas `transform: scale()` CSS en el video, el canvas o sus ancestros.
+- **Requisitos:** HTTPS (o `localhost`) y permiso de cámara. La cámara solo se abre en el cliente.
+
+---
+
 ## Componente `<QRScanner />`
 
 ### Props
@@ -187,7 +198,6 @@ function CustomScanner() {
   } = useQRScanner({
     onScan: (value, result) => console.log(value, result),
     onError: (err) => console.error(err),
-    locale: 'es',
     scanDelay: 500,
   });
 
